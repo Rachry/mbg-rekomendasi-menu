@@ -40,6 +40,26 @@ RUN groupadd --gid 10001 mbg \
     && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin mbg
 
 COPY --from=builder /install /usr/local
+
+# pip, setuptools, dan wheel bawaan base image tidak dibutuhkan saat aplikasi
+# berjalan, tetapi ikut terpindai sebagai kerentanan. Membuangnya menutup CVE
+# pada wheel dan pada jaraco.context yang di-vendor setuptools, sekaligus
+# menghilangkan pemasang paket dari container yang melayani permintaan.
+#
+# Dihapus dengan rm, bukan `pip uninstall`, sebab pip yang menghapus dirinya
+# sendiri dapat berhenti di tengah dan menyisakan paket lain. Impor terakhir
+# memastikan build gagal bila ada yang ternyata masih dibutuhkan.
+RUN rm -rf /usr/local/lib/python3.11/site-packages/pip \
+           /usr/local/lib/python3.11/site-packages/pip-*.dist-info \
+           /usr/local/lib/python3.11/site-packages/setuptools \
+           /usr/local/lib/python3.11/site-packages/setuptools-*.dist-info \
+           /usr/local/lib/python3.11/site-packages/pkg_resources \
+           /usr/local/lib/python3.11/site-packages/wheel \
+           /usr/local/lib/python3.11/site-packages/wheel-*.dist-info \
+           /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.* \
+           /usr/local/bin/wheel \
+    && python -c "import flask, gunicorn; from gunicorn.app.wsgiapp import WSGIApplication"
+
 COPY --chown=10001:10001 . .
 
 USER 10001:10001
