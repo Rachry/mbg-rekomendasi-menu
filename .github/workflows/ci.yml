@@ -199,7 +199,7 @@ jobs:
               --format cyclonedx --output /dev/stdout mbg:ci > sbom.json
           echo "Komponen tercatat: $(grep -c '"bom-ref"' sbom.json || true)"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: sbom
           path: sbom.json
