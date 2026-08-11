@@ -13,25 +13,12 @@
 # Berkas ini sengaja tidak dihasilkan pip-compile karena memuat penanda
 # sys_platform yang perlu dibaca manusia, sementara lockfile produksi hanya
 # menyasar Linux.
-
-# Kerangka aplikasi
-Flask==3.1.3
-
-# Server
-# Penanda sys_platform mencegah pip memasang gunicorn di Windows: paketnya
-# terpasang tetapi tidak dapat dijalankan karena bergantung pada modul fcntl
-# yang hanya ada di sistem mirip Unix.
-waitress==3.0.2                              # Windows dan lintas platform
-gunicorn==23.0.0; sys_platform != "win32"    # Linux, dipakai container
-
-# Pengujian dan pemeriksaan
-pytest==8.3.3
-pytest-randomly==3.15.0
-coverage==7.6.1
-
-# Pemeriksaan keamanan. Dijalankan CI pada tiap push, dapat juga dijalankan
-# lokal sebelum mendorong perubahan:
-#   pip-audit -r requirements.lock     periksa CVE pada dependensi
-#   bandit -r . -x ./tests             periksa pola berisiko pada kode
-pip-audit==2.9.0
-bandit==1.8.0
+blinker==1.9.0
+click==8.4.2
+flask==3.1.3
+gunicorn==26.0.0
+itsdangerous==2.2.0
+jinja2==3.1.6
+markupsafe==3.0.3
+packaging==26.3
+werkzeug==3.1.8
