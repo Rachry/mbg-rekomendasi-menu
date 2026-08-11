@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Peta Kewaspadaan Menu MBG{% endblock %}
+{% block main_class %}map-main{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/map.css') }}?v=12" />
+{% endblock %}
+
+{% block content %}
+<div class="map-stage">
+  <div id="peta"></div>
+
+  <!-- Panel kontrol mengambang: judul, pencarian, penyaring (FR-011) -->
+  <section class="panel" aria-label="Pencarian dan filter">
+    <div class="panel-head">
+      <div class="panel-head-text">
+        <h1>Seberapa hati-hati menu di daerahmu?</h1>
+        <p>Pilih daerah di peta, atau cari dan saring di bawah ini.</p>
+      </div>
+      <button type="button" class="panel-toggle" id="panel-toggle"
+              aria-expanded="true" aria-controls="panel-body" title="Lipat panel pencarian">
+        <span class="chev">&#9650;</span>
+      </button>
+    </div>
+    <div class="panel-body" id="panel-body">
+      <div class="field">
+        <label for="f-lapisan">Tampilkan</label>
+        <select id="f-lapisan">
+          <option value="kewaspadaan">Tingkat kewaspadaan menu</option>
+          <option value="produksi">Produksi pangan (ton)</option>
+        </select>
+        <small class="field-hint" id="ket-lapisan"></small>
+      </div>
+
+      <div class="field" id="grup-produksi" hidden>
+        <label for="f-kelompok">Kelompok komoditas</label>
+        <select id="f-kelompok"><option value="">Semua kelompok</option></select>
+      </div>
+      <div class="field" id="grup-tahun" hidden>
+        <label for="f-tahun">Tahun produksi</label>
+        <select id="f-tahun"><option value="">Semua tahun</option></select>
+      </div>
+      <div class="field" id="grup-saring" hidden>
+        <small class="field-hint">
+          Angka produksi ditampilkan <strong>apa adanya sesuai publikasi resmi
+          Badan Pusat Statistik</strong>, tanpa penyaringan kewajaran.
+        </small>
+        <details class="ket-meragukan">
+          <summary>Mengapa tidak ada penyaringan?</summary>
+          <p>
+            Keabsahan angka statistik resmi adalah tanggung jawab lembaga yang
+            menerbitkannya. Menyaring atau menandai angka BPS sebagai meragukan
+            berarti menempatkan penilaian penyusun di atas penilaian lembaga
+            statistik negara tanpa dasar.
+          </p>
+          <p>
+            Selain itu, produksi pangan antarwilayah memang timpang karena tiap
+            daerah punya sentra komoditasnya sendiri. Brebes memang sentra
+            bawang merah, Lampung memang sentra ubi kayu. Angka besar di sana
+            adalah temuan, bukan kesalahan.
+          </p>
+          <p>
+            Dua cacat yang benar-benar ada sudah diperbaiki di tahap penyiapan
+            data, yaitu satuan kelompok biofarmaka yang tercatat dalam kilogram
+            dan satu baris yang rusak saat pengambilan data. Keduanya diperbaiki
+            memakai angka rujukan resmi BPS, bukan taksiran.
+          </p>
+        </details>
+      </div>
+
+      <div class="field">
+        <label for="cari">Cari provinsi</label>
+        <div class="search-wrap">
+          <input type="text" id="cari" placeholder="Ketik nama provinsi…"
+                 autocomplete="off" aria-controls="saran" />
+          <div class="suggest" id="saran" role="listbox"></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-pulau">Pulau</label>
+        <select id="f-pulau">
+          <option value="">Semua pulau</option>
+          <option value="Sumatera">Sumatera</option>
+          <option value="Jawa">Jawa</option>
+          <option value="Bali-Nusa">Bali &amp; Nusa Tenggara</option>
+          <option value="Kalimantan">Kalimantan</option>
+          <option value="Sulawesi">Sulawesi</option>
+          <option value="Maluku-Papua">Maluku &amp; Papua</option>
+        </select>
+      </div>
+
+      <div class="filter-grid" id="grup-menu">
+        <div class="field">
+          <label for="f-jenjang">Jenjang</label>
+          <select id="f-jenjang">
+            <option value="">Gabungan</option>
+            {% for j in jenjang_list %}<option value="{{ j }}">{{ j }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-tingkat">Tingkat</label>
+          <select id="f-tingkat">
+            <option value="">Semua</option>
+            <option value="Tinggi">Perlu sangat hati-hati</option>
+            <option value="Sedang">Perlu hati-hati</option>
+            <option value="Rendah">Relatif aman</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn panel-reset" id="reset">Atur ulang tampilan</button>
+    </div>
+  </section>
+
+  <!-- Legenda warna kewaspadaan (FR-008) -->
+  <aside class="map-legend" aria-label="Keterangan warna">
+    <div id="legenda-kewaspadaan">
+      <h2>Tingkat kewaspadaan</h2>
+      <div class="legend-item"><span class="legend-swatch swatch-tinggi"></span> Perlu sangat hati-hati</div>
+      <div class="legend-item"><span class="legend-swatch swatch-sedang"></span> Perlu hati-hati</div>
+      <div class="legend-item"><span class="legend-swatch swatch-rendah"></span> Relatif aman</div>
+      <div class="legend-item"><span class="legend-swatch swatch-kosong"></span> Data belum tersedia</div>
+    </div>
+    <div id="legenda-produksi" hidden>
+      <h2>Produksi pangan</h2>
+      <div class="legend-skala" id="legenda-skala"></div>
+      <div class="legend-skala-label">
+        <span>0</span><span id="legenda-maks">-</span>
+      </div>
+      <p class="legend-catatan">
+        Angka produksi, bukan konsumsi. Daerah berproduksi besar belum tentu
+        mengonsumsinya sendiri.
+      </p>
+      <p class="legend-peringatan" id="legenda-peringatan" hidden></p>
+    </div>
+  </aside>
+
+  <!-- Kompas (FR-008) -->
+  <div class="compass" aria-hidden="true">
+    <span class="n">U</span><span class="needle">&#9650;</span>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
+  <script nonce="{{ csp_nonce }}">
+    window.MBG = {
+      geojsonUrl: "{{ url_for('static', filename='data/provinsi.geojson') }}",
+      apiProvinces: "{{ url_for('api.api_provinces') }}",
+      apiSearch: "{{ url_for('api.api_search') }}",
+      provinceUrlBase: "{{ url_for('pages.index') }}provinsi/",
+      produksiUrlBase: "{{ url_for('pages.produsen') }}"
+    };
+  </script>
+  <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/map.js') }}?v=11"></script>
+{% endblock %}

@@ -1,0 +1,49 @@
+# Rahasia
+# Diletakkan paling atas dan sengaja luas. Kunci yang sekali ter-commit tetap
+# ada di riwayat Git meskipun berkasnya dihapus pada commit berikutnya, jadi
+# satu-satunya pencegahan yang benar adalah tidak pernah memasukkannya.
+.env
+.env.*
+*.env
+!contoh.env
+!deploy/contoh.env
+secrets.json
+*.pem
+*.key
+
+# Lingkungan Python
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Cache pengujian
+.pytest_cache/
+pytest-cache-files-*/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+tests/coverage_html/
+
+# Arsip dan berkas sementara
+*.zip
+*.tar.gz
+.archive/
+*.log
+*.bak
+*.tmp
+
+# Perkakas
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Catatan
+# data/*.db sengaja TIDAK diabaikan. Basis data 5,8 MB ikut ter-commit supaya
+# angka yang tampil di web terikat pada commit yang sama dengan angka di
+# naskah, dan supaya container tidak membutuhkan volume persisten. Ukurannya
+# jauh di bawah batas berkas GitHub sebesar 100 MB.

@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Data Mentah | MBG{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <p class="eyebrow">Data Mentah</p>
+  <h1>Data yang dipakai sistem</h1>
+  <p class="page-lead">
+    Dua kumpulan data menjadi bahan seluruh perhitungan. <strong>Profil
+    kesehatan</strong> menentukan tingkat kewaspadaan tiap daerah, sedangkan
+    <strong>produksi pangan</strong> menentukan bahan mana yang dianggap khas
+    wilayah tersebut. Keduanya ditampilkan apa adanya di sini agar setiap angka
+    pada halaman lain dapat ditelusuri sampai ke sumbernya.
+  </p>
+
+  <div class="tab-bar" role="tablist" aria-label="Pilihan kumpulan data">
+    <button type="button" class="tab-btn active" data-tab="kesehatan"
+            role="tab" aria-selected="true" aria-controls="panel-kesehatan">
+      Profil Kesehatan
+      <span class="tab-jumlah">{{ ringkasan.total_baris_provinsi }} baris</span>
+    </button>
+    <button type="button" class="tab-btn" data-tab="produksi"
+            role="tab" aria-selected="false" aria-controls="panel-produksi">
+      Produksi Pangan
+      <span class="tab-jumlah">{{ total_produksi | angka(0) }} baris</span>
+    </button>
+  </div>
+
+<div id="panel-kesehatan" class="tab-panel" role="tabpanel">
+  <p class="sumber-note">
+    Sumber: API Kemendikdasmen, diambil sekali pada 7 Agustus 2026 pukul 17.44.
+    Satu baris mewakili satu kombinasi provinsi dan jenjang. Dari
+    {{ ringkasan.total_grid }} kombinasi yang mungkin,
+    {{ ringkasan.total_baris_provinsi }} dipakai dan
+    {{ ringkasan.baris_dibuang }} dibuang karena penerima manfaatnya nol atau
+    jumlah kasusnya melampaui jumlah penerima.
+  </p>
+
+  <div class="filter-bar">
+    <div class="field">
+      <label for="d-jenjang">Jenjang</label>
+      <select id="d-jenjang">
+        <option value="">Semua jenjang</option>
+        {% for j in jenjang_list %}<option value="{{ j }}">{{ j }}</option>{% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Mode tampilan</label>
+      <div class="mode-toggle" role="radiogroup" aria-label="Mode tampilan data">
+        <button type="button" class="mode-btn active" data-mode="mentah">
+          Tanpa label ML
+        </button>
+        <button type="button" class="mode-btn" data-mode="label">
+          Dengan label ML
+        </button>
+      </div>
+    </div>
+
+    <span class="filter-count" id="d-count"></span>
+    <button class="btn" id="d-csv" type="button">Unduh CSV</button>
+  </div>
+
+  <p class="mode-note" id="d-mode-note"></p>
+
+  <div class="data-table-wrap">
+    <table class="data-table" id="d-table">
+      <thead><tr id="d-thead"></tr></thead>
+      <tbody id="d-tbody">
+        <tr><td class="empty-state">Memuat…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div id="panel-produksi" class="tab-panel" hidden role="tabpanel">
+  <p class="sumber-note">
+    Sumber: Badan Pusat Statistik dan Kementerian Pertanian, dihimpun dari 100
+    berkas publikasi untuk tahun {{ ringkasan.produksi_tahun_awal }} sampai
+    {{ ringkasan.produksi_tahun_akhir }}. Satu baris mewakili satu komoditas
+    pada satu provinsi pada satu tahun. <strong>Angka produksi bukan angka
+    konsumsi.</strong> Komoditas yang tidak muncul berarti tidak tercatat pada
+    provinsi tersebut, berbeda dari nilai nol yang berarti tercatat tidak
+    berproduksi.
+  </p>
+
+  <div class="filter-bar">
+    <div class="field">
+      <label for="p-provinsi">Provinsi</label>
+      <select id="p-provinsi"><option value="">Semua provinsi</option></select>
+    </div>
+    <div class="field">
+      <label for="p-kelompok">Kelompok pangan</label>
+      <select id="p-kelompok"><option value="">Semua kelompok</option></select>
+    </div>
+    <div class="field">
+      <label for="p-komoditas">Komoditas</label>
+      <select id="p-komoditas"><option value="">Semua komoditas</option></select>
+    </div>
+    <div class="field">
+      <label for="p-tahun">Tahun</label>
+      <select id="p-tahun"><option value="">Semua tahun</option></select>
+    </div>
+    <span class="filter-count" id="p-count"></span>
+    <button class="btn" id="p-reset" type="button">Reset penyaring</button>
+    <button class="btn" id="p-csv" type="button">Unduh CSV</button>
+  </div>
+
+  <div class="data-table-wrap">
+    <table class="data-table" id="p-table">
+      <thead>
+        <tr>
+          <th>Provinsi</th><th>Komoditas</th><th>Kelompok</th>
+          <th>Tahun</th><th>Produksi (ton)</th><th>Satuan</th>
+        </tr>
+      </thead>
+      <tbody id="p-tbody">
+        <tr><td colspan="6" class="empty-state">Memuat…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="muat-lagi-wrap">
+    <button class="btn" id="p-lagi" type="button" hidden>Muat lebih banyak</button>
+    <p class="muat-lagi-note" id="p-progres"></p>
+  </div>
+</div>
+
+  {% if not alur_selesai %}
+  <div class="onboard-nav">
+    <a href="{{ url_for('lanjut', langkah=2) }}" class="btn btn-primary">Lanjut ke Metodologi &rarr;</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <script nonce="{{ csp_nonce }}">
+    window.MBG = {
+      apiDataMentah: "{{ url_for('api.api_data_mentah') }}",
+      apiProduksiMentah: "{{ url_for('api.api_produksi_mentah') }}",
+      apiOpsiProduksi: "{{ url_for('api.api_opsi_produksi') }}"
+    };
+  </script>
+  <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/data.js') }}?v=7"></script>
+  <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/data_produksi.js') }}?v=1"></script>
+{% endblock %}

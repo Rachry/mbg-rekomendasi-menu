@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Kelompok Daerah | MBG{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages.css') }}?v=8" />
+  <style>
+    /* Seluruh grafik digambar dengan HTML dan CSS memakai variabel tema,
+       bukan kanvas. Tiga alasannya: warnanya ikut mode gelap tanpa kode
+       tambahan, teksnya tetap tajam saat diperbesar sehingga layak dipakai
+       sebagai gambar pada naskah, dan isinya dapat dibaca pembaca layar. */
+
+    .kl-pilih { margin-bottom: var(--space-6); }
+
+    /* Kartu ringkas tiap kelompok */
+    .kl-kartu-baris { display: grid; gap: var(--space-4); margin-bottom: var(--space-8);
+                      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    .kl-kartu { background: var(--bg-secondary); border: 1px solid var(--border-light);
+                border-left: 5px solid var(--c); border-radius: var(--radius-md);
+                padding: var(--space-5); }
+    .kl-kartu h3 { font-size: var(--text-lg); margin: 0 0 var(--space-1); color: var(--c); }
+    .kl-kartu .kl-jumlah { font-family: var(--display); font-size: var(--text-3xl);
+                           line-height: 1.1; font-variant-numeric: tabular-nums; }
+    .kl-kartu .kl-ket { font-size: var(--text-sm); color: var(--text-secondary); }
+    .kl-kartu .kl-skor { margin-top: var(--space-3); font-size: var(--text-sm);
+                         color: var(--text-secondary); }
+    .kl-kartu .kl-skor b { font-variant-numeric: tabular-nums; color: var(--text-primary); }
+    .kl-peringatan { margin-top: var(--space-3); font-size: var(--text-xs);
+                     color: var(--warning); line-height: 1.5; }
+
+    /* Panel kecil per dimensi */
+    /* Dua kolom tetap, bukan auto-fit. Dengan auto-fit, layar lebar memuat tiga
+       panel sebaris sehingga panel keempat menggantung sendirian, dan tiap panel
+       menjadi sempit sehingga batangnya terlalu pendek untuk dibandingkan. */
+    .kl-panel-grid { display: grid; gap: var(--space-5);
+                     grid-template-columns: repeat(2, minmax(0, 1fr));
+                     margin-bottom: var(--space-8); }
+    @media (max-width: 780px) {
+      .kl-panel-grid { grid-template-columns: 1fr; }
+    }
+    .kl-panel { background: var(--bg-secondary); border: 1px solid var(--border-light);
+                border-radius: var(--radius-md); padding: var(--space-5); }
+    .kl-panel h3 { font-size: var(--text-base); margin: 0 0 var(--space-1); }
+    .kl-panel .kl-sub { font-size: var(--text-xs); color: var(--text-muted);
+                        display: block; margin-bottom: var(--space-4); line-height: 1.5; }
+
+    /* Nama tingkat dipindah ke atas batang, bukan di sampingnya. Dengan begitu
+       batang memakai seluruh lebar panel, dan perbedaan panjangnya benar-benar
+       terlihat. Susunan menyamping membuat batang hanya kebagian sisa lebar
+       setelah label selebar 8,5 rem dan angka selebar 4,2 rem. */
+    .kl-baris { display: grid; grid-template-columns: 1fr auto;
+                align-items: center; gap: var(--space-2) var(--space-3);
+                margin-bottom: var(--space-4); }
+    .kl-baris:last-child { margin-bottom: 0; }
+    .kl-nama { font-size: var(--text-sm); color: var(--text-secondary);
+               grid-column: 1 / -1; margin-bottom: -2px; }
+    .kl-track { height: 22px; background: var(--bg-tertiary); border-radius: 4px;
+                overflow: hidden; }
+    .kl-isi { height: 100%; border-radius: 4px; min-width: 2px;
+              transition: width var(--duration-normal) var(--ease-out); }
+    .kl-nilai { font-size: var(--text-sm); font-variant-numeric: tabular-nums;
+                font-weight: 600; min-width: 4.2rem; text-align: right; }
+    .kl-skala { display: flex; justify-content: space-between; font-size: 0.68rem;
+                color: var(--text-muted); margin-top: var(--space-3);
+                padding-right: calc(4.2rem + var(--space-3));
+                font-variant-numeric: tabular-nums; }
+
+    /* Perbandingan antar jenjang */
+    /* Empat jenjang disusun dua di atas dua di bawah, sebab berjajar empat
+       membuat tiap kartu terlalu sempit dan batangnya menjadi sekadar sliver. */
+    .kl-antar { display: grid; gap: var(--space-4);
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                margin-bottom: var(--space-8); }
+    @media (max-width: 780px) {
+      .kl-antar { grid-template-columns: 1fr; }
+    }
+    .kl-antar-kartu { border: 1px solid var(--border-light); border-radius: var(--radius-md);
+                      padding: var(--space-4); background: var(--bg-secondary); }
+    .kl-antar-kartu h4 { font-size: var(--text-sm); margin: 0 0 var(--space-3); }
+    .kl-antar-kartu.aktif { border-color: var(--accent); box-shadow: var(--shadow-glow); }
+
+    /* Tabel angka */
+    .kl-tabel { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+    .kl-tabel th, .kl-tabel td { padding: var(--space-2) var(--space-3);
+      border-bottom: 1px solid var(--border-light); text-align: left; }
+    .kl-tabel th { background: var(--bg-secondary); font-weight: 700; }
+    .kl-tabel td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .kl-titik { display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+                margin-right: 6px; vertical-align: baseline; }
+
+    /* Daftar provinsi */
+    .kl-daftar { display: grid; gap: var(--space-4);
+                 grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .kl-daftar-kartu { border: 1px solid var(--border-light); border-left: 5px solid var(--c);
+                       border-radius: var(--radius-md); padding: var(--space-4);
+                       background: var(--bg-secondary); }
+    .kl-daftar-kartu h4 { font-size: var(--text-sm); margin: 0 0 var(--space-2); color: var(--c); }
+    .kl-prov { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); }
+    .kl-prov a { font-size: var(--text-xs); padding: 2px 8px; border-radius: 999px;
+                 background: var(--bg-tertiary); color: var(--text-secondary);
+                 text-decoration: none; }
+    .kl-prov a:hover { background: var(--c); color: #fff; }
+
+    .kl-muat { padding: var(--space-8); text-align: center; color: var(--text-secondary); }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <p class="eyebrow">Kelompok daerah</p>
+  <h1>Bagaimana daerah dikelompokkan</h1>
+  <p class="page-lead">
+    Provinsi dikelompokkan menjadi tiga tingkat kewaspadaan menggunakan
+    K-Means Clustering, dijalankan terpisah untuk tiap jenjang pendidikan.
+    Tiga hal yang diukur: proporsi peserta didik dengan alergi makanan,
+    dengan intoleransi, dan dengan kecenderungan menolak makanan tertentu.
+    Tingkat ini menggambarkan seberapa hati-hati menu perlu disusun, bukan
+    penilaian terhadap daerahnya.
+  </p>
+
+  <div class="filter-bar kl-pilih">
+    <div class="field">
+      <label for="c-jenjang">Jenjang</label>
+      <select id="c-jenjang">
+        {% for j in jenjang_list %}<option value="{{ j }}">{{ j }}</option>{% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div id="kl-muat" class="kl-muat">Memuat data kelompok…</div>
+
+  <div id="kl-isi" hidden>
+    <section aria-label="Ringkasan tiap kelompok">
+      <div class="kl-kartu-baris" id="kl-kartu"></div>
+    </section>
+
+    <section aria-label="Perbandingan tiap dimensi">
+      <h2>Apa yang membedakan ketiga kelompok</h2>
+      <p class="page-lead" style="margin-bottom:var(--space-5)">
+        Tiap dimensi digambar pada skalanya sendiri. Kalau keempatnya dipaksa
+        berbagi satu sumbu, dimensi yang angkanya kecil akan tampak rata nol
+        padahal perbedaannya nyata. Sumbu tiap panel dimulai dari nol dan
+        berakhir di nilai tertinggi panel itu, dan angka pastinya ditulis di
+        samping tiap batang.
+      </p>
+      <div class="kl-panel-grid" id="kl-panel"></div>
+    </section>
+
+    <section aria-label="Perbandingan antar jenjang">
+      <h2>Apakah polanya sama di jenjang lain</h2>
+      <p class="page-lead" style="margin-bottom:var(--space-5)">
+        Skor gabungan tiap kelompok pada keempat jenjang. Urutan Tinggi,
+        Sedang, Rendah konsisten di semua jenjang, tetapi besar selisihnya
+        berbeda-beda.
+      </p>
+      <div class="kl-antar" id="kl-antar"></div>
+    </section>
+
+    <section aria-label="Angka pasti">
+      <h2>Angka pasti</h2>
+      <div class="data-table-wrap">
+        <table class="kl-tabel">
+          <thead>
+            <tr>
+              <th>Kelompok</th><th class="num">Provinsi</th>
+              <th class="num">Alergi</th><th class="num">Intoleransi</th>
+              <th class="num">Fobia</th><th class="num">Skor gabungan</th>
+            </tr>
+          </thead>
+          <tbody id="kl-tabel"></tbody>
+        </table>
+      </div>
+      <p class="empty-state" style="margin-top:var(--space-3)">
+        Seluruh angka adalah rata-rata proporsi peserta didik pada provinsi
+        anggota kelompok tersebut. Skor gabungan dihitung dengan bobot dari
+        Analytic Hierarchy Process (AHP), bukan rata-rata sederhana ketiganya.
+      </p>
+    </section>
+
+    <section aria-label="Daftar provinsi">
+      <h2>Provinsi anggota tiap kelompok</h2>
+      <div class="kl-daftar" id="kl-daftar"></div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <script nonce="{{ csp_nonce }}">
+    window.MBG = { apiClusters: "{{ url_for('api.api_clusters') }}" };
+  </script>
+  <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/cluster.js') }}?v=8"></script>
+{% endblock %}

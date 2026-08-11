@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}{{ menu.menu_label }} | Menu MBG{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/detail.css') }}?v=10" />
+{% endblock %}
+
+{% set pill = {"Tinggi": "pill-tinggi", "Sedang": "pill-sedang", "Rendah": "pill-rendah"} %}
+
+{% macro bar(label, d, satuan) %}
+  {% set rasio = d.rasio or 0 %}
+  {% set kelas = 'ok' if 0.8 <= rasio <= 1.2 else ('under' if rasio < 0.8 else 'over') %}
+  <div class="akg-bar">
+    <div class="lab">
+      <span>{{ label }}</span>
+      <span class="val">{{ d.aktual }} {{ satuan }} &middot; {{ (rasio * 100)|round(0)|int }}% dari target</span>
+    </div>
+    <div class="akg-track">
+      <div class="akg-fill {{ kelas }}" style="width: {{ [rasio * 100, 100]|min }}%"></div>
+    </div>
+  </div>
+{% endmacro %}
+
+{% block content %}
+<div class="page">
+  <div class="prov-head">
+    <h1>{{ menu.menu_label }}</h1>
+    <span class="pill {{ pill[menu.tingkat] }}">{{ menu.label_awam }}</span>
+  </div>
+  <p class="page-lead">
+    Menu makan siang untuk jenjang <strong>{{ menu.jenjang }}</strong> di
+    <strong>{{ menu.provinsi }}</strong>. Bahannya dipilih dari yang tersedia
+    di provinsi tersebut, sehingga menu untuk provinsi lain bisa berbeda
+    meskipun jenjang dan tingkat kewaspadaannya sama.
+  </p>
+
+  {% if not menu.halal %}
+  <div class="safe-panel" style="border-left-color:var(--danger)">
+    <span class="mark">!</span>
+    <div>
+      <b>Mengandung bahan non-halal</b>
+      <span>Bahan yang dimaksud: {{ menu.bahan_non_halal }}. Penanda ini
+      berasal dari kolom status halal pada tabel bahan.</span>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if not menu.alergen and not menu.intoleransi %}
+  <div class="safe-panel">
+    <span class="mark">&#10003;</span>
+    <div>
+      <b>Tanpa penanda alergen dan intoleransi</b>
+      <span>Tidak ada bahan pada menu ini yang membawa penanda alergen
+      maupun intoleransi yang tercatat di basis data.</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card" style="margin-bottom:1.2rem">
+    <h3 style="font-size:1.05rem">Pemenuhan gizi terhadap target makan siang</h3>
+    {{ bar("Energi", menu.gizi.energi, "kkal") }}
+    {{ bar("Protein", menu.gizi.protein, "g") }}
+    {{ bar("Lemak", menu.gizi.lemak, "g") }}
+    {{ bar("Karbohidrat", menu.gizi.karbo, "g") }}
+    <p class="empty-state" style="padding-top:0.6rem">
+      {% if menu.gizi.akg_valid %}
+        Seluruh zat gizi makro berada dalam rentang toleransi 80 sampai 120 persen
+        terhadap target makan siang.
+      {% else %}
+        Sebagian zat gizi berada di luar rentang toleransi target makan siang.
+      {% endif %}
+      {% if menu.akg_standar %}
+        Target mengacu standar AKG {{ menu.akg_standar.kelompok_umur }}.
+      {% endif %}
+    </p>
+  </div>
+
+  <div class="card" style="margin-bottom:1.2rem">
+    <h3 style="font-size:1.05rem">Ketersediaan bahan lokal</h3>
+    {% if menu.bahan_lokal %}
+      <p class="safe-panel" style="border-left-color:#3f9d5b">
+        <span class="mark">&#10003;</span>
+        <span>
+          <b>{{ menu.bahan_lokal }} dari {{ menu.jumlah_bahan }} bahan menu ini
+          diproduksi di {{ menu.provinsi }}</b>
+          {% if menu.bahan_lokal_sebagian %}
+          , ditambah {{ menu.bahan_lokal_sebagian }} bahan yang sebagian
+          kebutuhannya dipenuhi produksi setempat
+          {% endif %}.
+          Rinciannya ada pada kolom asal bahan di tabel komposisi.
+        </span>
+      </p>
+    {% endif %}
+    {% if menu.isl is not none %}
+      <p>
+        Indeks Sumber Lokal (ISL) menu ini <strong>{{ (menu.isl * 100)|round(0)|int }}%</strong>,
+        dihitung dari {{ menu.isl_bahan_berdata }} dari {{ menu.jumlah_bahan }} bahan
+        yang punya data produksi di {{ menu.provinsi }}.
+      </p>
+      <p class="empty-state">
+        Nilai ISL menunjukkan seberapa besar kebutuhan bahan dapat dipenuhi
+        produksi provinsi sendiri. Bahan tanpa data produksi tidak ikut dihitung,
+        bukan dianggap nol. Penanda pada tabel memakai ambang
+        {{ (ambang_utama * 100)|round(0)|int }} persen ke atas untuk
+        "diproduksi di provinsi ini" dan
+        {{ (ambang_sebagian * 100)|round(0)|int }} persen ke atas untuk
+        "sebagian dari provinsi ini".
+        <a href="{{ url_for('pages.produsen') }}?provinsi={{ menu.provinsi }}">
+          Lihat seluruh komoditas {{ menu.provinsi }}</a>.
+      </p>
+    {% else %}
+      <p class="empty-state">
+        Tidak ada bahan pada menu ini yang punya data produksi provinsi,
+        sehingga ISL belum dapat dihitung.
+      </p>
+    {% endif %}
+  </div>
+
+  <h3 style="font-size:1.05rem">Komposisi bahan</h3>
+  <div class="bahan-table-wrap">
+  <table class="bahan-table">
+    <thead>
+      <tr><th>Bahan</th><th>Kelompok</th><th>Porsi</th><th>Asal bahan</th></tr>
+    </thead>
+    <tbody>
+      {% for b in menu.bahan %}
+      <tr class="{{ 'flag-alergen' if b.alergen else '' }}">
+        <td>
+          {{ b.nama_bahan }}
+          {% if b.alergen or b.intoleransi or b.fobia or not b.halal %}
+          <div class="bahan-flags">
+            {% for a in b.alergen %}<span class="badge badge-alergen">Alergen: {{ a }}</span>{% endfor %}
+            {% for i in b.intoleransi %}<span class="badge badge-intoleransi">Intoleransi: {{ i }}</span>{% endfor %}
+            {% if b.fobia %}<span class="badge badge-fobia">sebagian anak mungkin kurang suka</span>{% endif %}
+            {% if not b.halal %}<span class="badge badge-alergen">non-halal</span>{% endif %}
+          </div>
+          {% endif %}
+        </td>
+        <td>{{ b.subkelompok | replace('_', ' ') }}</td>
+        <td class="porsi">{{ b.porsi_g }} g</td>
+        <td>
+          <span class="tag-lokal" style="color:{{ b.lokal_warna }}"
+                title="{{ b.lokal_arti }}">{{ b.lokal_label }}</span>
+          {% if b.isl is not none %}
+          <span class="muted" style="font-size:0.72rem;margin-left:6px;white-space:nowrap">
+            ISL {{ (b.isl * 100)|round(0)|int }}%
+          </span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  <p class="empty-state" style="margin-top:0.9rem; border-left:3px solid var(--primary); padding-left:0.8rem">
+    {% if menu.intoleransi %}
+      Menu ini memuat bahan pemicu intoleransi yang ditandai di atas.
+    {% else %}
+      Menu ini bebas pemicu intoleransi (gluten dan laktosa). Sistem memilih
+      bahan teraman tiap kelompok pangan, dan pengganti bebas gluten maupun
+      bebas laktosa hampir selalu lebih aman, sehingga jarang ada menu yang
+      memuat pemicu intoleransi.
+      <a href="{{ url_for('pages.metodologi') }}">Pelajari alasannya.</a>
+    {% endif %}
+  </p>
+</div>
+{% endblock %}

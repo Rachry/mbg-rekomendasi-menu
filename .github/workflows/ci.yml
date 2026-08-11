@@ -1,0 +1,206 @@
+name: CI
+
+# Push adalah deploy. Karena platform hosting membangun ulang setiap kali ada
+# push ke main, workflow ini adalah satu-satunya yang berdiri antara commit
+# yang rusak dan web yang dilihat penguji.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Dijadwalkan mingguan supaya CVE yang baru diumumkan tetap terdeteksi
+  # meskipun tidak ada perubahan kode selama beberapa minggu.
+  schedule:
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+
+# Bawaan paling sempit. Tiap job menaikkan izinnya sendiri bila memang perlu.
+# Token yang terlalu longgar adalah salah satu jalur utama serangan rantai
+# pasok pada GitHub Actions: satu langkah yang disusupi mendapat izin tulis ke
+# seluruh repo.
+permissions:
+  contents: read
+
+# Push beruntun membatalkan proses yang masih berjalan, supaya yang dinilai
+# selalu commit terbaru.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# CATATAN: MEMATOK ACTION KE SHA
+#
+# Tag seperti @v4 dapat dipindahkan pemiliknya ke commit mana pun. Pada Maret
+# 2026, penyerang mendorong paksa 75 tag milik aquasecurity/trivy-action ke
+# commit yang memuat pencuri kredensial. Repo yang memakai tag ikut menjalankan
+# muatan itu; repo yang memakai SHA tidak.
+#
+# Workflow ini sengaja hanya memakai dua action, keduanya milik GitHub sendiri.
+# Pemindaian keamanan dijalankan sebagai perintah biasa, bukan lewat action
+# pihak ketiga, supaya tidak ada tag pihak ketiga yang perlu dipercaya.
+#
+# Kedua action yang tersisa tetap perlu dipatok. Jalankan:
+#   bash deploy/pin-actions.sh
+# lalu commit hasilnya. Dependabot yang dikonfigurasi di .github/dependabot.yml
+# akan menjaga SHA itu tetap mutakhir.
+
+jobs:
+  uji:
+    name: Pengujian (Python ${{ matrix.python }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.11 adalah versi yang dipakai container. 3.12 dijalankan sebagai
+        # peringatan dini: bila ada yang akan rusak pada versi berikutnya,
+        # lebih baik ketahuan sekarang daripada saat terpaksa naik versi.
+        python: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Pasang dependensi
+        run: |
+          python -m pip install --upgrade pip
+          # Lockfile pengembangan tidak dipasang dengan --require-hashes karena
+          # memuat paket yang hanya dipakai CI. Lockfile produksi diuji
+          # terpisah pada job `container`.
+          pip install -r requirements-dev.lock
+
+      - name: Jalankan pengujian dengan urutan diacak
+        env:
+          FLASK_ENV: testing
+          MBG_RILIS: ci-${{ github.sha }}
+        run: |
+          # Urutan diacak dengan benih acak. Uji yang diam-diam bergantung pada
+          # sisa keadaan uji sebelumnya akan gagal di sini, bukan nanti.
+          coverage run -m pytest -v --tb=short
+          coverage report --show-missing
+
+      - name: Ambang cakupan
+        if: matrix.python == '3.11'
+        run: coverage report --fail-under=95
+
+  keamanan:
+    name: Pemeriksaan keamanan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Pasang perkakas pemeriksa
+        run: pip install pip-audit==2.9.0 bandit==1.8.0
+
+      - name: pip-audit, CVE pada dependensi produksi
+        # Yang diperiksa adalah lockfile produksi, sebab itulah yang benar-benar
+        # dipasang di container. Memeriksa requirements.txt akan melewatkan
+        # seluruh dependensi turunan.
+        run: pip-audit --requirement requirements.lock --strict
+
+      - name: pip-audit, dependensi pengembangan
+        # Tidak menggagalkan build: paket yang hanya dipakai CI tidak dapat
+        # dijangkau pengunjung. Tetap dilaporkan supaya terlihat.
+        continue-on-error: true
+        run: pip-audit --requirement requirements-dev.lock
+
+      - name: bandit, pola berisiko pada kode
+        # B101 (assert) dikecualikan pada tests/ karena assert memang alat
+        # pengujian. Selain itu tidak ada pengecualian: bila bandit mengeluh,
+        # keluhannya dibaca, bukan dibungkam.
+        run: bandit --recursive . --exclude ./tests,./venv,./.venv --severity-level medium
+
+  container:
+    name: Build dan pindai image
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Build image
+        # Build sendiri sudah menjadi pengujian: bila requirements.lock rusak
+        # atau hashnya tidak cocok, langkah ini gagal. Image tidak didorong ke
+        # registry mana pun; platform hosting membangunnya sendiri dari sumber.
+        run: docker build --tag mbg:ci .
+
+      - name: Uji asap container
+        run: |
+          set -euo pipefail
+          # PORT sengaja diisi angka yang bukan bawaan. Ini mengunci temuan K-2:
+          # versi sebelumnya mengikat ke 5000 secara tetap, sehingga gagal di
+          # platform mana pun yang menyuntikkan port lewat variabel lingkungan.
+          docker run --detach --name mbg-ci \
+            --env PORT=8123 \
+            --env MBG_SECRET_KEY=kunci-uji-ci-bukan-untuk-produksi \
+            --env MBG_RILIS=ci-${{ github.sha }} \
+            --publish 8123:8123 \
+            mbg:ci
+
+          for i in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8123/health > /dev/null; then
+              echo "Container hidup pada percobaan ke-$i"
+              break
+            fi
+            if [ "$i" = "30" ]; then
+              echo "Container tidak pernah siap. Log:"
+              docker logs mbg-ci
+              exit 1
+            fi
+            sleep 2
+          done
+
+          echo "--- /health ---"
+          curl --silent --fail http://127.0.0.1:8123/health
+          echo
+          echo "--- halaman pertama alur harus 200 ---"
+          curl --silent --fail --output /dev/null --write-out '%{http_code}\n' \
+            http://127.0.0.1:8123/tentang
+          echo "--- header keamanan ---"
+          curl --silent --head http://127.0.0.1:8123/tentang | grep -i \
+            -e content-security-policy -e x-content-type-options -e x-frame-options
+
+          echo "--- proses harus berjalan sebagai non-root ---"
+          test "$(docker exec mbg-ci id -u)" = "10001"
+
+          docker rm --force mbg-ci
+
+      - name: Trivy, pindai CVE pada image
+        # Dijalankan sebagai container resmi Aqua, bukan lewat aquasecurity/
+        # trivy-action. Action itu tagnya pernah dibajak pada Maret 2026;
+        # memanggil image langsung menghilangkan satu pihak yang perlu
+        # dipercaya. Tetap patok tag image ini ke digest bila memungkinkan.
+        run: |
+          docker run --rm \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            --volume "${HOME}/.cache/trivy:/root/.cache/trivy" \
+            aquasec/trivy:0.58.1 image \
+              --severity HIGH,CRITICAL \
+              --ignore-unfixed \
+              --exit-code 1 \
+              --format table \
+              mbg:ci
+
+      - name: SBOM
+        run: |
+          docker run --rm \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:0.58.1 image \
+              --format cyclonedx --output /dev/stdout mbg:ci > sbom.json
+          echo "Komponen tercatat: $(grep -c '"bom-ref"' sbom.json || true)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+          retention-days: 30

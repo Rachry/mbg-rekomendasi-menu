@@ -1,0 +1,31 @@
+# Konfigurasi coverage.
+#
+# Tanpa berkas ini, coverage ikut mengukur berkas uji itu sendiri. Angkanya
+# jadi menyesatkan dalam dua arah sekaligus: berkas uji hampir selalu 100
+# persen sehingga menaikkan rata-rata, sementara berkas uji yang dilewati
+# justru menurunkannya tanpa alasan yang berarti. Yang ingin diketahui adalah
+# berapa banyak kode aplikasi yang benar-benar dijalankan pengujian.
+
+[run]
+source = .
+branch = True
+omit =
+    tests/*
+    venv/*
+    .venv/*
+    gunicorn.conf.py
+    setup.py
+
+[report]
+show_missing = True
+skip_covered = False
+precision = 1
+
+exclude_lines =
+    pragma: no cover
+    # Blok ini hanya berjalan saat berkas dieksekusi langsung, bukan lewat
+    # server WSGI, jadi tidak pernah tersentuh pengujian.
+    if __name__ == .__main__.:
+    # Definisi tipe, bukan kode yang berjalan.
+    if TYPE_CHECKING:
+    raise NotImplementedError

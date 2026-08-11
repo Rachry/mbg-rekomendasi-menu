@@ -1,0 +1,522 @@
+{% extends "base.html" %}
+{% block title %}Metodologi | MBG{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="page prose">
+  <p class="eyebrow">Metodologi</p>
+  <h1>Bagaimana sistem ini bekerja</h1>
+  <p class="page-lead">
+    Halaman ini menelusuri seluruh perhitungan dari data mentah sampai menu
+    jadi, sembilan langkah berurutan. Tiap langkah disertai rumus dan satu
+    contoh terhitung dengan angka provinsi sungguhan, sehingga siapa pun dapat
+    memeriksa ulang tanpa membuka kode program. Contoh yang dipakai sedapat
+    mungkin provinsi yang sama, yaitu <strong>Aceh jenjang SMP</strong>,
+    supaya satu rangkaian angka dapat diikuti dari awal sampai akhir.
+  </p>
+
+  <nav class="langkah-nav" aria-label="Daftar langkah">
+    <a href="#langkah-1">1. Data</a>
+    <a href="#langkah-2">2. Penyaringan</a>
+    <a href="#langkah-3">3. Rate</a>
+    <a href="#langkah-4">4. Uji beda</a>
+    <a href="#langkah-5">5. Penyeragaman</a>
+    <a href="#langkah-6">6. Bobot AHP</a>
+    <a href="#langkah-7">7. Pengelompokan</a>
+    <a href="#langkah-8">8. Skor bahan</a>
+    <a href="#langkah-9">9. Menu</a>
+  </nav>
+
+  <!--   -->
+  <h2 id="langkah-1">1. Dari mana datanya</h2>
+  <p>
+    Tujuh sumber dipakai, masing-masing untuk keperluan yang berbeda. Seluruh
+    angka pada situs ini terikat pada satu kali pengambilan data MBG, yaitu
+    <strong>7 Agustus 2026 pukul 17.44</strong>. Pengambilan pada tanggal lain
+    akan memberi angka berbeda, sedangkan metodenya tetap sama.
+  </p>
+  <table class="tbl">
+    <thead><tr><th>Sumber</th><th>Dipakai untuk</th><th>Cakupan</th></tr></thead>
+    <tbody>
+      <tr><td>API Kemendikdasmen</td><td>Profil kesehatan peserta didik</td><td>{{ ringkasan.total_grid }} kombinasi provinsi &amp; jenjang</td></tr>
+      <tr><td>Permenkes 28/2019</td><td>Target Angka Kecukupan Gizi</td><td>4 jenjang</td></tr>
+      <tr><td>Tabel Komposisi Pangan Indonesia 2017</td><td>Kandungan gizi bahan</td><td>{{ ringkasan.total_bahan }} bahan</td></tr>
+      <tr><td>WHO dan FAO</td><td>Daftar alergen dan keparahannya</td><td>14 alergen</td></tr>
+      <tr><td>Riset Kesehatan Dasar 2018</td><td>Urutan kategori yang sering ditolak anak</td><td>Nasional</td></tr>
+      <tr><td>Neraca Bahan Makanan 2023</td><td>Indeks Pola Pangan Wilayah</td><td>34 provinsi, diwariskan ke 38</td></tr>
+      <tr><td>BPS dan Kementerian Pertanian</td><td>Indeks Sumber Lokal</td><td>{{ ringkasan.produksi_tahun_awal }}–{{ ringkasan.produksi_tahun_akhir }}, 100 berkas</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Seluruh data mentahnya dapat dilihat langsung pada halaman
+    <a href="{{ url_for('pages.data_mentah') }}">Data Mentah</a>, termasuk
+    tabel produksi pangan yang memuat lebih dari lima belas ribu baris.
+  </p>
+
+  <!--   -->
+  <h2 id="langkah-2">2. Baris mana yang dipakai</h2>
+  <p>
+    Tidak semua baris dapat diolah. Dari {{ ringkasan.total_grid }} kombinasi
+    provinsi dan jenjang, tersisa
+    <strong>{{ ringkasan.total_baris_provinsi }}</strong> setelah dua
+    penyaringan. Keduanya membuang baris karena alasan yang dapat diperiksa,
+    bukan karena angkanya terasa aneh.
+  </p>
+  <table class="tbl">
+    <thead><tr><th>Tahap</th><th>Aturan</th><th>Dibuang</th><th>Tersisa</th></tr></thead>
+    <tbody>
+      <tr><td>Data mentah</td><td>Seluruh kombinasi yang mungkin</td><td class="num">–</td><td class="num">{{ ringkasan.total_grid }}</td></tr>
+      <tr><td>Penyaringan 1</td><td>Penerima manfaat nol, belum terjangkau program</td><td class="num">{{ ringkasan.baris_dibuang - 1 }}</td><td class="num">{{ ringkasan.total_baris_provinsi + 1 }}</td></tr>
+      <tr><td>Penyaringan 2</td><td>Jumlah kasus melampaui jumlah penerima</td><td class="num">1</td><td class="num">{{ ringkasan.total_baris_provinsi }}</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Penyaringan pertama diperlukan karena rate dihitung dengan membagi jumlah
+    kasus terhadap jumlah penerima; bila penyebutnya nol, tidak ada yang dapat
+    dihitung. Penyaringan kedua membuang satu baris yang mencatat 35 kasus
+    alergi dari 30 penerima manfaat, yang tidak mungkin terjadi dan menandakan
+    kekeliruan pencatatan pada sumbernya. Baris itu dibuang, bukan dibatasi
+    nilainya, sebab K-Means sangat peka terhadap titik yang terlalu jauh.
+  </p>
+
+  <!--   -->
+  <h2 id="langkah-3">3. Mengubah jumlah kasus menjadi rate</h2>
+  <p>
+    Yang dipakai bukan jumlah kasus mentah, melainkan <span class="term">rate</span>,
+    yaitu jumlah kasus dibagi jumlah penerima manfaat.
+  </p>
+  <p class="rumus">rate = jumlah kasus &divide; jumlah penerima manfaat</p>
+  <p>
+    Alasannya sederhana. Jawa Timur jenjang SD mencatat 3.815 kasus alergi,
+    terbanyak di Indonesia, tetapi dari 261.850 penerima manfaat sehingga
+    ratenya hanya 0,014569. Papua Selatan jenjang SD mencatat 63 kasus saja,
+    tetapi dari 578 penerima sehingga ratenya 0,108997, yaitu tujuh setengah
+    kali lipat. Jumlah mentah mengukur besarnya populasi, sedangkan rate
+    mengukur seberapa sering kondisi itu dijumpai.
+  </p>
+  <p><strong>Contoh, Aceh jenjang SMP:</strong></p>
+  <table class="tbl">
+    <thead><tr><th>Kondisi</th><th>Kasus</th><th>Penerima</th><th>Rate</th></tr></thead>
+    <tbody>
+      <tr><td>Alergi</td><td class="num">230</td><td class="num">2.260</td><td class="num">0,101770</td></tr>
+      <tr><td>Intoleransi</td><td class="num">202</td><td class="num">2.260</td><td class="num">0,089381</td></tr>
+      <tr><td>Fobia makanan</td><td class="num">34</td><td class="num">2.260</td><td class="num">0,015044</td></tr>
+    </tbody>
+  </table>
+
+  <!--   -->
+  <h2 id="langkah-4">4. Memastikan tiap jenjang memang berbeda</h2>
+  <p>
+    Sebelum memodelkan tiap jenjang secara terpisah, perlu dibuktikan dulu
+    bahwa jenjang memang berbeda. Digunakan
+    <span class="term">Uji Kruskal-Wallis</span>, yaitu uji yang membandingkan
+    lebih dari dua kelompok tanpa mensyaratkan sebaran normal. Sebaran rate di
+    sini memang menceng ke kanan, sehingga uji yang mensyaratkan kenormalan
+    tidak cocok dipakai.
+  </p>
+  <table class="tbl">
+    <thead><tr><th>Kriteria</th><th>Statistik H</th><th>Nilai p</th><th>Kesimpulan</th></tr></thead>
+    <tbody>
+      <tr><td>Rate alergi</td><td class="num">12,6318</td><td class="num">0,005504</td><td>Berbeda nyata</td></tr>
+      <tr><td>Rate intoleransi</td><td class="num">20,9042</td><td class="num">0,000110</td><td>Berbeda nyata</td></tr>
+      <tr><td>Rate fobia makanan</td><td class="num">25,9798</td><td class="num">0,000010</td><td>Berbeda nyata</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Ketiga nilai p berada di bawah 0,05 sehingga jenjang dinyatakan berbeda.
+    Namun uji ini hanya menyatakan <em>ada</em> perbedaan, bukan bahwa keempat
+    jenjang saling berbeda. Uji lanjutan Mann-Whitney dengan koreksi Bonferroni
+    menunjukkan perbedaannya terpusat pada jenjang SMK; pasangan SD dengan SMP
+    justru tidak berbeda nyata pada ketiga kriteria. Hal ini dilaporkan apa
+    adanya, dan pemisahan per jenjang tetap dipertahankan karena target gizinya
+    memang sudah berbeda sejak awal.
+  </p>
+
+  <!--   -->
+  <h2 id="langkah-5">5. Menyeragamkan skala tiap kriteria</h2>
+  <p>
+    Ketiga rate memiliki rentang yang berbeda-beda, sehingga tidak dapat
+    langsung dibandingkan. <span class="term">Min-Max</span> mengubah semuanya
+    ke rentang nol sampai satu.
+  </p>
+  <p class="rumus">
+    nilai baru = (rate &minus; rate terkecil) &divide; (rate terbesar &minus; rate terkecil)
+  </p>
+  <p>
+    Penyeragaman dijalankan <strong>terpisah tiap jenjang</strong>, bukan
+    sekaligus untuk seluruh data. Dengan begitu nilai satu berarti tertinggi di
+    antara sesama jenjangnya, dan tingkat kewaspadaan menjadi bermakna relatif
+    terhadap jenjang yang sebanding.
+  </p>
+  <p><strong>Contoh, Aceh jenjang SMP:</strong></p>
+  <table class="tbl">
+    <thead><tr><th>Kriteria</th><th>Rate</th><th>Terkecil</th><th>Terbesar</th><th>Hasil</th></tr></thead>
+    <tbody>
+      <tr><td>Alergi</td><td class="num">0,101770</td><td class="num">0,000000</td><td class="num">0,101770</td><td class="num">1,000000</td></tr>
+      <tr><td>Intoleransi</td><td class="num">0,089381</td><td class="num">0,000000</td><td class="num">0,089381</td><td class="num">1,000000</td></tr>
+      <tr><td>Fobia</td><td class="num">0,015044</td><td class="num">0,000000</td><td class="num">0,024469</td><td class="num">0,614832</td></tr>
+    </tbody>
+  </table>
+  <div class="info-box">
+    Nilai satu <strong>tidak berarti</strong> seluruh peserta didik mengalami
+    kondisi tersebut. Nilai satu hanya berarti provinsi itu yang tertinggi di
+    antara sesama jenjangnya. Aceh memperoleh nilai satu pada alergi dan
+    intoleransi karena keduanya memang tertinggi pada jenjang SMP.
+  </div>
+
+  <!--   -->
+  <h2 id="langkah-6">6. Menimbang bobot ketiga kriteria dengan AHP</h2>
+  <p>
+    <span class="term">AHP</span> memberi bobot pada beberapa hal yang tidak
+    sama pentingnya dengan cara membandingkannya berpasangan. Alergi dinilai
+    paling berat karena dapat memicu anafilaksis yang mengancam jiwa,
+    intoleransi menengah karena menimbulkan gangguan pencernaan tanpa mengancam
+    jiwa, dan fobia paling ringan karena tidak menimbulkan reaksi tubuh sama
+    sekali.
+  </p>
+  <table class="tbl">
+    <thead><tr><th>&nbsp;</th><th>Alergi</th><th>Intoleransi</th><th>Fobia</th></tr></thead>
+    <tbody>
+      <tr><td>Alergi</td><td class="num">1</td><td class="num">3</td><td class="num">5</td></tr>
+      <tr><td>Intoleransi</td><td class="num">1/3</td><td class="num">1</td><td class="num">2</td></tr>
+      <tr><td>Fobia</td><td class="num">1/5</td><td class="num">1/2</td><td class="num">1</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Bobot diperoleh dengan <strong>membagi tiap sel terhadap jumlah kolomnya,
+    lalu merata-ratakan tiap baris</strong>. Jumlah ketiga kolomnya berturut-turut
+    1,533333; 4,500000; dan 8,000000. Sel baris alergi kolom alergi menjadi
+    1 &divide; 1,533333 = 0,652174, dan seterusnya. Rata-rata baris alergi dari
+    0,652174; 0,666667; dan 0,625000 menghasilkan bobot 0,647947.
+  </p>
+  <table class="tbl">
+    <thead><tr><th>Kriteria</th><th>Bobot</th><th>Dibulatkan</th></tr></thead>
+    <tbody>
+      <tr><td>Alergi</td><td class="num">0,647947</td><td class="num">65%</td></tr>
+      <tr><td>Intoleransi</td><td class="num">0,229871</td><td class="num">23%</td></tr>
+      <tr><td>Fobia makanan</td><td class="num">0,122182</td><td class="num">12%</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Penilaian berpasangan seperti ini bisa saja tidak taat asas, misalnya bila
+    A dinilai lebih penting dari B, B lebih penting dari C, tetapi C justru
+    dinilai lebih penting dari A. Karena itu dihitung
+    <strong>Rasio Konsistensi</strong> dari nilai eigen terbesar matriks
+    dibandingkan ukurannya, lalu dibagi indeks acak untuk matriks berordo tiga
+    sebesar 0,58. Hasilnya <strong>0,003187</strong>, jauh di bawah ambang 0,10,
+    sehingga penilaiannya dinyatakan taat asas.
+  </p>
+
+  <!--   -->
+  <h2 id="langkah-7">7. Mengelompokkan daerah dengan K-Means</h2>
+  <p>
+    <span class="term">K-Means</span> membagi provinsi menjadi tiga kelompok
+    berdasarkan kemiripan ketiga nilai ternormalisasi tadi. Algoritma ini
+    bekerja dengan menempatkan tiga titik pusat, memasukkan tiap provinsi ke
+    pusat terdekat, lalu menggeser pusatnya ke rata-rata anggotanya, berulang
+    sampai pusatnya tidak lagi bergeser.
+  </p>
+  <p>
+    Tiga kelompok dipilih bukan karena unggul secara metrik, melainkan karena
+    tiga tingkat kewaspadaan bermakna secara operasional bagi petugas penyusun
+    menu. Pada jenjang SD dan SMP, dua kelompok sebenarnya memberi angka mutu
+    lebih tinggi. Hal ini dinyatakan terbuka ketimbang disembunyikan.
+  </p>
+  <p>
+    Nomor kelompok bawaan algoritma tidak berurut maknanya, sehingga penamaan
+    Rendah, Sedang, dan Tinggi ditentukan setelah pengelompokan selesai, dengan
+    menghitung skor terbobot rata-rata tiap kelompok memakai bobot AHP lalu
+    mengurutkannya.
+  </p>
+  <p class="rumus">
+    skor kelompok = 0,647947 &times; rata-rata rate alergi
+    + 0,229871 &times; rata-rata rate intoleransi
+    + 0,122182 &times; rata-rata rate fobia
+  </p>
+  {% if profil_smp %}
+  <p><strong>Contoh, ketiga kelompok pada jenjang SMP:</strong></p>
+  <table class="tbl">
+    <thead>
+      <tr><th>Tingkat</th><th>Provinsi</th><th>Rata rate alergi</th>
+          <th>Rata rate intoleransi</th><th>Rata rate fobia</th><th>Skor</th></tr>
+    </thead>
+    <tbody>
+      {% for p in profil_smp %}
+      <tr>
+        <td>{{ p.label_risiko }}</td>
+        <td class="num">{{ p.n_provinsi }}</td>
+        <td class="num">{{ p.mean_alergi | angka(6) }}</td>
+        <td class="num">{{ p.mean_intoleransi | angka(6) }}</td>
+        <td class="num">{{ p.mean_fobia | angka(6) }}</td>
+        <td class="num">{{ p.mean_weighted_score | angka(6) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p>
+    Skor kelompok Tinggi diperoleh dari 0,647947 &times; 0,070434 ditambah
+    0,229871 &times; 0,040262 ditambah 0,122182 &times; 0,020373, yaitu
+    0,045637 + 0,009255 + 0,002489 = 0,057381.
+  </p>
+  {% endif %}
+  <p>
+    Satu provinsi dapat memperoleh tingkat berbeda pada jenjang berbeda, sebab
+    penyeragaman dijalankan per jenjang. Aceh berlabel Tinggi pada SMP tetapi
+    Sedang pada SD dan SMA.
+  </p>
+
+  <!--   -->
+  <h2 id="langkah-8">8. Menilai risiko tiap bahan dan menetapkan ambang</h2>
+  <p>
+    Sampai di sini yang dinilai adalah daerahnya. Langkah ini menilai
+    <strong>bahannya</strong>. Skor risiko bahan menggambarkan sifat bahan itu
+    sendiri, bukan profil penerima manfaat, sebab perbedaan antardaerah sudah
+    ditangani pada pengelompokan.
+  </p>
+  <p>Tiga komponen dihitung terpisah lalu digabung memakai bobot AHP.</p>
+
+  <h3>Skor alergi</h3>
+  <p>
+    Diambil <strong>nilai tertinggi</strong> di antara alergen yang dikandung
+    bahan, bukan dijumlahkan. Anak yang alergi telur akan bereaksi terhadap
+    telur pada mie telur terlepas dari kandungan gandumnya, sehingga
+    menjumlahkan dua keparahan tidak bermakna klinis.
+  </p>
+  <table class="tbl">
+    <thead><tr><th>Alergen</th><th>Keparahan pada rujukan</th><th>Skor</th></tr></thead>
+    <tbody>
+      <tr><td>Kacang tanah</td><td>Tinggi, reaksi dari dosis sangat kecil</td><td class="num">0,85</td></tr>
+      <tr><td>Susu, telur, ikan, kerang, kacang pohon</td><td>Tinggi, anafilaksis mungkin</td><td class="num">0,70</td></tr>
+      <tr><td>Gandum</td><td>Sedang sampai tinggi</td><td class="num">0,50</td></tr>
+      <tr><td>Kedelai</td><td>Sedang, anafilaksis jarang</td><td class="num">0,30</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Rujukan WHO dan FAO menyatakan tingkatannya dengan kata, bukan angka,
+    sehingga pemetaan ke angka merupakan <strong>ketetapan penulis</strong>.
+    Aturannya dibuat sesederhana mungkin supaya dapat diperiksa: tingkat
+    tertinggi ditambatkan pada 0,70, jarak antartingkat seragam 0,20, dan
+    tambahan 0,15 diberikan bagi alergen yang rujukannya menyebut reaksi dapat
+    timbul dari dosis sangat kecil. Hanya kacang tanah yang memenuhi syarat
+    terakhir.
+  </p>
+
+  <h3>Skor intoleransi</h3>
+  <p>
+    Diambil nilai tertinggi di antara pemicu yang dikandung. Laktosa diberi
+    0,60 karena prevalensinya pada anak Indonesia sangat tinggi meski tidak
+    mengancam jiwa; gluten diberi 0,25 karena sensitivitas gluten nonceliac
+    jauh lebih jarang pada populasi Asia. Keduanya juga ketetapan penulis pada
+    skala yang sama dengan alergen.
+  </p>
+
+  <h3>Skor fobia</h3>
+  <p>
+    Disusun dua lapis, yaitu nilai dasar menurut kategori pangan ditambah
+    pengubah menurut ciri rasa, bau, tekstur, atau warna. Sayuran memperoleh
+    nilai dasar tertinggi 0,40 mengikuti temuan Riskesdas 2018 bahwa hampir
+    seluruh anak usia sekolah kurang mengonsumsi sayuran. Yang diambil dari
+    data itu hanyalah <strong>urutan kategorinya</strong>, sedangkan besaran
+    angkanya ketetapan penulis berlangkah 0,05.
+  </p>
+
+  <h3>Menggabungkan ketiganya</h3>
+  <p class="rumus">
+    skor bahan = 0,647947 &times; skor alergi
+    + 0,229871 &times; skor intoleransi
+    + 0,122182 &times; skor fobia
+  </p>
+  <p>
+    <strong>Contoh, mie telur kering.</strong> Mengandung telur berkeparahan
+    0,70 dan gandum berkeparahan 0,50, sehingga skor alerginya diambil yang
+    tertinggi yaitu 0,70. Mengandung gluten sehingga skor intoleransinya 0,25.
+    Tidak berciri rasa atau bau yang lazim ditolak sehingga skor fobianya nol.
+    Hasilnya 0,647947 &times; 0,70 + 0,229871 &times; 0,25 + 0 =
+    0,4536 + 0,0575 = <strong>0,5110</strong>.
+  </p>
+
+  <h3>Ambang tiap tingkat kewaspadaan</h3>
+  <p>
+    Ambang <strong>tidak ditulis tangan</strong>, melainkan diturunkan dari
+    sebaran skor ke-{{ ringkasan.total_bahan }} bahan. Karena komponennya hanya
+    bernilai pada himpunan terbatas, skor gabungannya hanya mendarat pada 28
+    nilai berbeda, dan di antaranya terdapat ruang kosong yang disebut celah
+    alami. Ambang diletakkan tepat di titik tengah celah terpilih.
+  </p>
+  <table class="tbl">
+    <thead><tr><th>Tingkat</th><th>Ambang</th><th>Celah asal</th><th>Bahan yang boleh dipakai</th></tr></thead>
+    <tbody>
+      <tr><td>Tinggi</td><td class="num">0,2971</td><td class="num">0,2127 – 0,3814</td><td class="num">89</td></tr>
+      <tr><td>Sedang</td><td class="num">0,4175</td><td class="num">0,3814 – 0,4536</td><td class="num">93</td></tr>
+      <tr><td>Rendah</td><td class="num">0,4915</td><td class="num">0,4719 – 0,5110</td><td class="num">114</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Celah terlebar dipakai untuk tingkat Tinggi, dan letaknya kebetulan memisah
+    bahan tanpa alergen utama dari bahan yang mengandungnya. Ambang tingkat
+    Rendah sengaja diletakkan tepat di atas skor protein hewani tertinggi,
+    supaya seluruh ikan dan kerang tetap boleh dipakai; menurunkannya sedikit
+    saja akan menghapus seluruh menu berbahan ikan di provinsi pesisir dan
+    Indonesia timur.
+  </p>
+
+  <!--   -->
+  <h2 id="langkah-9">9. Menyusun menu</h2>
+  <p>Penyusunan menu bekerja tiga lapis yang urutannya mengikat.</p>
+
+  <h3>Lapis pertama: keamanan</h3>
+  <p>
+    Bahan yang skor risikonya melampaui ambang tingkat kewaspadaan provinsi
+    disingkirkan lebih dulu. Lapis ini dijalankan paling awal, sehingga bahan
+    berisiko tinggi tidak pernah sampai ke tahap pengundian. Jumlah menu juga
+    dibedakan: tiga menu untuk tingkat Tinggi, lima untuk Sedang, dan delapan
+    untuk Rendah.
+  </p>
+
+  <h3>Lapis kedua: kesesuaian wilayah</h3>
+  <p>Dua indeks menentukan peluang terpilihnya sebuah bahan.</p>
+  <p>
+    <span class="term">IPW</span> mengukur seberapa jauh sebuah provinsi
+    bertumpu pada kelompok pangan tertentu <strong>dibandingkan rata-rata
+    seluruh provinsi</strong>, bukan sekadar pangsanya sendiri.
+  </p>
+  <p class="rumus">
+    IPW = persen energi kelompok itu di provinsi &divide; rata-ratanya di 38 provinsi
+  </p>
+  <p>
+    Pembagian terhadap rata-rata diperlukan karena pangsa mentah tidak dapat
+    dibandingkan antarkelompok. Padi-padian menyumbang sekitar 52 persen energi
+    di hampir semua provinsi, sedangkan susu tidak pernah melampaui satu
+    persen. Tanpa pembagian itu padi akan selalu menang. Contohnya ikan di
+    Papua Barat: 26,82 persen dibagi rata-rata 7,2929 persen menghasilkan
+    3,677552, artinya Papua Barat bertumpu pada ikan hampir empat kali
+    rata-rata nasional. Jawa Tengah hanya 0,130264.
+  </p>
+  <p>
+    <span class="term">ISL</span> mengukur pangsa sebuah komoditas
+    <strong>di antara komoditas sebanding pada provinsi yang sama</strong>.
+  </p>
+  <p class="rumus">
+    ISL = produksi komoditas itu &divide; total produksi kelompok pembandingnya di provinsi tersebut
+  </p>
+  <p>
+    Penyebutnya sengaja bukan produksi nasional. Bila memakai penyebut
+    nasional, yang terukur adalah seberapa besar sumbangan provinsi terhadap
+    Indonesia, sehingga provinsi besar selalu unggul. Dengan penyebut kelompok
+    setempat, yang terukur adalah komposisi pangan wilayah itu sendiri.
+    Contohnya sagu Papua bernilai 0,571261 dengan penyebut setempat, artinya
+    sagu merupakan 57 persen sumber karbohidrat yang dihasilkan Papua. Dengan
+    penyebut nasional nilainya hanya 0,028547, yang tidak berguna untuk
+    menyusun menu di Papua.
+  </p>
+  <p>
+    Kedua indeks digabung dengan bobot <strong>65 persen pola konsumsi dan 35
+    persen produksi setempat</strong>. Konsumsi diberi bobot lebih besar karena
+    sasarannya kesesuaian kebiasaan makan, dan karena produksi ternyata hampir
+    tidak berhubungan dengan konsumsi; korelasi keduanya pada ikan hanya
+    &minus;0,043.
+  </p>
+
+  <h3>Lapis ketiga: kecukupan gizi</h3>
+  <p>
+    Porsi tiap bahan dihitung dari target zat gizi yang menjadi perannya, bukan
+    dengan penskalaan seragam. Urutannya mengikat karena tiga peran terakhir
+    dihitung dari sisa.
+  </p>
+  <table class="tbl">
+    <thead><tr><th>Urutan</th><th>Peran bahan</th><th>Porsinya dihitung dari</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>Lauk hewani</td><td>55% target protein, atau 45% bila berlemak tinggi</td></tr>
+      <tr><td class="num">2</td><td>Lauk nabati</td><td>Sisanya hingga 80% target protein</td></tr>
+      <tr><td class="num">3</td><td>Sayur dan buah</td><td>Porsi baku 100 gram</td></tr>
+      <tr><td class="num">4</td><td>Sumber karbohidrat</td><td>Sisa target karbohidrat</td></tr>
+      <tr><td class="num">5</td><td>Sumber lemak</td><td>Sisa target lemak</td></tr>
+    </tbody>
+  </table>
+  <p>
+    Target makan siangnya sendiri diturunkan dari Angka Kecukupan Gizi harian
+    Permenkes 28/2019, dikalikan persentase porsi makan siang.
+  </p>
+  <table class="tbl">
+    <thead>
+      <tr><th>Jenjang</th><th>Umur</th><th>Energi harian</th><th>Persen</th>
+          <th>Target energi</th><th>Target protein</th><th>Target lemak</th><th>Target karbo</th></tr>
+    </thead>
+    <tbody>
+      {% for a in akg %}
+      <tr>
+        <td>{{ a.jenjang }}</td>
+        <td>{{ a.kelompok_umur }}</td>
+        <td class="num">{{ a.energi_kkal | angka(0) }} kkal</td>
+        <td class="num">{{ (a.pct_energi * 100) | angka(1) }}%</td>
+        <td class="num">{{ a.energi_siang | angka(1) }} kkal</td>
+        <td class="num">{{ a.protein_siang | angka(1) }} g</td>
+        <td class="num">{{ a.lemak_siang | angka(1) }} g</td>
+        <td class="num">{{ a.karbo_siang | angka(1) }} g</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p>
+    Persentase makan siang adalah 32,5 persen untuk energi, lemak, dan
+    karbohidrat, serta 35 persen untuk protein, mengikuti Pedoman Gizi Seimbang
+    yang menetapkan makan siang menyumbang sekitar sepertiga kebutuhan harian.
+    Menu diterima bila keempat rasionya berada antara <strong>0,80 dan
+    1,20</strong> terhadap target makan siang, bukan terhadap kebutuhan harian
+    penuh. Menu yang gagal diundi ulang.
+  </p>
+  <div class="info-box">
+    Rasio protein pada sebagian besar menu berada sedikit di atas target. Hal
+    ini bersifat sistematis, bukan kebetulan: 80 persen target protein
+    dibebankan pada dua lauk, sedangkan sumbangan protein dari sumber
+    karbohidrat, sayur, dan buah pada praktiknya melampaui 20 persen sisanya.
+    Seluruh menu tetap berada dalam rentang toleransi.
+  </div>
+
+  <!--   -->
+  <h2>Asal tiap angka</h2>
+  <p>
+    Seluruh angka pada sistem ini termasuk salah satu dari tiga golongan.
+    Menyatakannya terbuka lebih berguna daripada menyembunyikan mana yang
+    merupakan pilihan penulis.
+  </p>
+  <table class="tbl">
+    <thead><tr><th>Golongan</th><th>Artinya</th><th>Contoh</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Data</strong></td>
+        <td>Dibaca langsung dari sumber tanpa perhitungan</td>
+        <td>Jumlah kasus, kandungan gizi bahan, angka produksi</td>
+      </tr>
+      <tr>
+        <td><strong>Turunan</strong></td>
+        <td>Dihitung dari besaran lain lewat rumus, dapat dihasilkan ulang siapa pun</td>
+        <td>Rate, bobot AHP, ambang, Indeks Sumber Lokal, porsi</td>
+      </tr>
+      <tr>
+        <td><strong>Ketetapan penulis</strong></td>
+        <td>Ditetapkan sendiri karena tidak ada acuan bakunya</td>
+        <td>Pemetaan keparahan alergen ke angka, nilai dasar skor fobia,
+            jumlah menu tiap tingkat, bobot 65 berbanding 35, toleransi gizi
+            0,80 sampai 1,20</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    Ketetapan penulis memengaruhi hasil dan karena itu didaftar terbuka. Bila
+    ketetapannya diubah, hasilnya berubah pula, sedangkan cara kerjanya tetap
+    sama. Batasan penelitian selengkapnya ada pada halaman
+    <a href="{{ url_for('pages.tentang') }}">Tentang</a>, dan arti tiap istilah
+    teknis ada pada <a href="{{ url_for('pages.istilah') }}">Daftar Istilah</a>.
+  </p>
+
+  {% if not alur_selesai %}
+  <div class="onboard-nav">
+    <a href="{{ url_for('lanjut', langkah=3) }}" class="btn btn-primary">Lanjut ke Peta &rarr;</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

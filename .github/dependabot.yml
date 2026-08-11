@@ -1,0 +1,39 @@
+version: 2
+
+# Dependabot menjaga tiga hal tetap mutakhir: paket Python, base image
+# container, dan action GitHub. Yang terakhir yang paling sering dilupakan,
+# padahal begitu action dipatok ke SHA, tidak ada lagi yang memperbaruinya
+# secara otomatis. Tanpa Dependabot, SHA yang dipatok hari ini akan
+# membeku pada versi yang rentan setahun kemudian.
+
+updates:
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: [dependensi, keamanan]
+    commit-message:
+      prefix: "deps"
+    groups:
+      # Pembaruan tambalan digabung jadi satu PR supaya tidak membanjiri repo.
+      # Pembaruan minor dan mayor tetap terpisah agar dapat dibaca satu per satu.
+      tambalan:
+        update-types: [patch]
+
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels: [dependensi, keamanan]
+    commit-message:
+      prefix: "docker"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels: [dependensi, keamanan]
+    commit-message:
+      prefix: "ci"

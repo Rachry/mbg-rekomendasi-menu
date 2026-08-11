@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% block title %}Produksi dan Ketersediaan Bahan | MBG{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages.css') }}?v=8" />
+  <style>
+    .pr-kepala { display: flex; flex-wrap: wrap; gap: var(--space-4);
+                 margin: var(--space-5) 0 var(--space-6); }
+    .pr-kartu { flex: 1 1 150px; background: var(--bg-secondary);
+                border: 1px solid var(--border-light); border-radius: var(--radius-md);
+                padding: var(--space-4); }
+    .pr-kartu b { display: block; font-family: var(--display); font-size: var(--text-2xl);
+                  font-variant-numeric: tabular-nums; line-height: 1.2; }
+    .pr-kartu span { font-size: var(--text-xs); color: var(--text-muted); }
+
+    .pr-tab { display: flex; gap: var(--space-1); border-bottom: 1px solid var(--border-light);
+              margin-bottom: var(--space-5); }
+    .pr-tab button { background: none; border: none; border-bottom: 2px solid transparent;
+                     padding: var(--space-3) var(--space-4); cursor: pointer;
+                     font-size: var(--text-sm); font-weight: 600; color: var(--text-secondary); }
+    .pr-tab button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .pr-tabel { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+    .pr-tabel th, .pr-tabel td { padding: var(--space-2) var(--space-3);
+      border-bottom: 1px solid var(--border-light); text-align: left; }
+    .pr-tabel th { font-weight: 700; background: var(--bg-secondary); position: sticky; top: 0; }
+    .pr-tabel td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .pr-wrap { max-height: 560px; overflow-y: auto; border: 1px solid var(--border-light);
+               border-radius: var(--radius-sm); }
+
+    .bar-track { height: 6px; border-radius: 3px; background: var(--bg-tertiary);
+                 overflow: hidden; min-width: 80px; }
+    .bar-isi { height: 100%; background: var(--accent); }
+    .tanda-ragu { font-size: 0.68rem; padding: 1px 6px; border-radius: 999px;
+                  background: var(--warning-soft); color: var(--warning); margin-left: 6px; }
+    .pr-catatan { background: var(--warning-soft); border: 1px solid var(--border-light);
+                  border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4);
+                  font-size: var(--text-sm); margin-bottom: var(--space-4); }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <p class="eyebrow">Produksi dan ketersediaan</p>
+  <h1>Bahan baku yang diproduksi tiap provinsi</h1>
+  <p class="page-lead">
+    Halaman ini menampilkan dua hal yang berbeda dan sering tertukar.
+    <strong>Produksi</strong> adalah berapa ton komoditas yang dihasilkan
+    provinsi menurut Badan Pusat Statistik (BPS).
+    <strong>Indeks Sumber Lokal (ISL)</strong> adalah seberapa besar kebutuhan
+    sebuah bahan menu dapat dipenuhi produksi provinsi itu sendiri, bernilai
+    0 sampai 1. Produksi besar tidak otomatis berarti ISL tinggi, sebab
+    sebagian hasil dikirim ke daerah lain.
+  </p>
+
+  <div class="filter-bar">
+    <div class="field">
+      <label for="p-provinsi">Provinsi</label>
+      <select id="p-provinsi">
+        {% for p in provinsi_list %}
+        <option value="{{ p }}" {% if p == provinsi_terpilih %}selected{% endif %}>{{ p }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="p-tahun">Tahun</label>
+      <select id="p-tahun">
+        <option value="">Semua tahun</option>
+        {% for t in tahun_list %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="pr-kepala" id="p-kepala"></div>
+  <div id="p-peringatan"></div>
+
+  <div class="pr-tab" role="tablist">
+    <button role="tab" id="tab-komoditas" aria-selected="true" aria-controls="panel-komoditas">
+      Komoditas diproduksi
+    </button>
+    <button role="tab" id="tab-kelompok" aria-selected="false" aria-controls="panel-kelompok">
+      Ringkasan per kelompok
+    </button>
+    <button role="tab" id="tab-isl" aria-selected="false" aria-controls="panel-isl">
+      Ketersediaan bahan menu (ISL)
+    </button>
+  </div>
+
+  <section id="panel-komoditas" role="tabpanel" aria-labelledby="tab-komoditas">
+    <div class="pr-wrap">
+      <table class="pr-tabel">
+        <thead>
+          <tr><th>Komoditas</th><th>Kelompok</th><th class="num">Produksi</th><th>Sebaran</th></tr>
+        </thead>
+        <tbody id="p-komoditas"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="panel-kelompok" role="tabpanel" aria-labelledby="tab-kelompok" hidden>
+    <div class="pr-wrap">
+      <table class="pr-tabel">
+        <thead>
+          <tr><th>Kelompok pangan</th><th class="num">Jumlah komoditas</th><th class="num">Produksi</th><th>Sebaran</th></tr>
+        </thead>
+        <tbody id="p-kelompok"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="panel-isl" role="tabpanel" aria-labelledby="tab-isl" hidden>
+    <p class="empty-state" style="margin-bottom:var(--space-3)">
+      Hanya bahan yang punya data produksi yang muncul di sini. Bahan tanpa
+      data tidak ditampilkan sebagai nol, melainkan tidak ditampilkan sama
+      sekali, dan tidak ikut dihitung saat ISL sebuah menu dirata-ratakan.
+    </p>
+    <div class="pr-wrap">
+      <table class="pr-tabel">
+        <thead>
+          <tr><th>Bahan menu</th><th>Komoditas sumber</th><th class="num">ISL</th><th>Sebaran</th></tr>
+        </thead>
+        <tbody id="p-isl"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="empty-state" style="margin-top:var(--space-5)">
+    Sumber produksi: Badan Pusat Statistik (BPS) dan Kementerian Pertanian,
+    2019 sampai 2024. Angka ditampilkan apa adanya sesuai publikasi resmi,
+    tanpa penyaringan kewajaran.
+  </p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce }}">
+(function () {
+  "use strict";
+  var selProvinsi = document.getElementById("p-provinsi");
+  var selTahun = document.getElementById("p-tahun");
+
+  function el(tag, kelas, teks) {
+    var n = document.createElement(tag);
+    if (kelas) n.className = kelas;
+    if (teks !== undefined && teks !== null) n.textContent = String(teks);
+    return n;
+  }
+
+  function formatTon(n) {
+    if (n >= 1e9) return (n / 1e9).toFixed(1) + " miliar ton";
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + " juta ton";
+    if (n >= 1e3) return (n / 1e3).toFixed(0) + " ribu ton";
+    return Math.round(n) + " ton";
+  }
+
+  function selBar(nilai, maks) {
+    var td = el("td");
+    var track = el("div", "bar-track");
+    var isi = el("div", "bar-isi");
+    // Skala akar agar komoditas kecil tetap terlihat di samping yang raksasa.
+    var r = maks > 0 ? Math.sqrt(Math.max(0, nilai) / maks) : 0;
+    isi.style.width = Math.round(r * 100) + "%";
+    track.appendChild(isi); td.appendChild(track);
+    return td;
+  }
+
+  function q() {
+    var s = "?provinsi=" + encodeURIComponent(selProvinsi.value);
+    if (selTahun.value) s += "&tahun=" + encodeURIComponent(selTahun.value);
+    return s;
+  }
+  function qTahun() {
+    return selTahun.value ? "?tahun=" + encodeURIComponent(selTahun.value) : "";
+  }
+
+  function muatRingkasan() {
+    var kepala = document.getElementById("p-kepala");
+    var kotakPeringatan = document.getElementById("p-peringatan");
+    kepala.textContent = "";
+    kotakPeringatan.textContent = "";
+
+    fetch("/api/produksi/" + encodeURIComponent(selProvinsi.value) + "/ringkasan" + qTahun())
+      .then(function (r) { if (!r.ok) throw new Error("gagal"); return r.json(); })
+      .then(function (d) {
+        [["Total produksi", formatTon(d.total_ton)],
+         ["Komoditas", d.n_komoditas],
+         ["Kelompok pangan", d.n_kelompok],
+         ["Rentang tahun", d.tahun_awal + " sampai " + d.tahun_akhir]
+        ].forEach(function (p) {
+          var k = el("div", "pr-kartu");
+          k.appendChild(el("b", null, p[1]));
+          k.appendChild(el("span", null, p[0]));
+          kepala.appendChild(k);
+        });
+
+        // Tabel ringkasan kelompok memakai data yang sama.
+        var tbody = document.getElementById("p-kelompok");
+        tbody.textContent = "";
+        var maks = d.kelompok.length ? d.kelompok[0].ton : 0;
+        d.kelompok.forEach(function (k) {
+          var tr = el("tr");
+          tr.appendChild(el("td", null, String(k.kelompok).replace(/_/g, " ")));
+          tr.appendChild(el("td", "num", k.n_komoditas));
+          tr.appendChild(el("td", "num", formatTon(k.ton)));
+          tr.appendChild(selBar(k.ton, maks));
+          tbody.appendChild(tr);
+        });
+      })
+      .catch(function () {
+        kepala.appendChild(el("p", "empty-state", "Gagal memuat ringkasan produksi."));
+      });
+  }
+
+  function muatKomoditas() {
+    var tbody = document.getElementById("p-komoditas");
+    tbody.textContent = "";
+    fetch("/api/produksi/" + encodeURIComponent(selProvinsi.value) + "/teratas" + qTahun() )
+      .then(function (r) { if (!r.ok) throw new Error("gagal"); return r.json(); })
+      .then(function (d) {
+        if (!d.data.length) {
+          var tr = el("tr"); var td = el("td", null, "Tidak ada data produksi.");
+          td.colSpan = 4; tr.appendChild(td); tbody.appendChild(tr); return;
+        }
+        var maks = d.data[0].ton;
+        d.data.forEach(function (k) {
+          var tr = el("tr");
+          tr.appendChild(el("td", null, String(k.komoditas).replace(/_/g, " ")));
+          tr.appendChild(el("td", null, String(k.kelompok).replace(/_/g, " ")));
+          tr.appendChild(el("td", "num", formatTon(k.ton)));
+          tr.appendChild(selBar(k.ton, maks));
+          tbody.appendChild(tr);
+        });
+      })
+      .catch(function () {
+        var tr = el("tr"); var td = el("td", null, "Gagal memuat komoditas.");
+        td.colSpan = 4; tr.appendChild(td); tbody.appendChild(tr);
+      });
+  }
+
+  function muatIsl() {
+    var tbody = document.getElementById("p-isl");
+    tbody.textContent = "";
+    fetch("/api/isl/" + encodeURIComponent(selProvinsi.value))
+      .then(function (r) { if (!r.ok) throw new Error("gagal"); return r.json(); })
+      .then(function (d) {
+        d.data.forEach(function (b) {
+          var tr = el("tr");
+          tr.appendChild(el("td", null, b.nama_bahan));
+          tr.appendChild(el("td", null, String(b.komoditas).replace(/_/g, " ")));
+          tr.appendChild(el("td", "num", Math.round(b.isl * 100) + "%"));
+          tr.appendChild(selBar(b.isl, 1));
+          tbody.appendChild(tr);
+        });
+      })
+      .catch(function () {
+        var tr = el("tr"); var td = el("td", null, "Gagal memuat ISL.");
+        td.colSpan = 4; tr.appendChild(td); tbody.appendChild(tr);
+      });
+  }
+
+  function muatSemua() {
+    muatRingkasan(); muatKomoditas(); muatIsl();
+    // Alamat ikut diperbarui agar halaman dapat ditautkan dan dimuat ulang.
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState(null, "", q());
+    }
+  }
+
+  // Tab
+  var tab = [["tab-komoditas", "panel-komoditas"],
+             ["tab-kelompok", "panel-kelompok"],
+             ["tab-isl", "panel-isl"]];
+  tab.forEach(function (t) {
+    document.getElementById(t[0]).addEventListener("click", function () {
+      tab.forEach(function (u) {
+        var aktif = u[0] === t[0];
+        document.getElementById(u[0]).setAttribute("aria-selected", aktif ? "true" : "false");
+        document.getElementById(u[1]).hidden = !aktif;
+      });
+    });
+  });
+
+  selProvinsi.addEventListener("change", muatSemua);
+  selTahun.addEventListener("change", muatSemua);
+  muatSemua();
+})();
+</script>
+{% endblock %}

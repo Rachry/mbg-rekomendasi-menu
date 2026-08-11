@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ judul | default("Terjadi kesalahan") }} | MBG{% endblock %}
+{% block content %}
+<div class="page prose">
+  <p class="eyebrow">{{ kode | default(500) }}</p>
+  <h1>{{ judul | default("Terjadi kesalahan") }}</h1>
+  <p>{{ pesan | default("Terjadi kesalahan internal. Silakan muat ulang halaman.") }}</p>
+  <p class="muted">
+    Kalau pesan ini terus muncul, catat alamat halaman yang kamu buka lalu
+    laporkan supaya bisa ditelusuri.
+  </p>
+  <p>
+    <a class="btn btn-primary" href="{{ url_for('pages.index') }}">Kembali ke peta</a>
+    <a class="btn" href="{{ url_for('pages.rekomendasi') }}">Cari menu</a>
+  </p>
+</div>
+{% endblock %}

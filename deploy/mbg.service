@@ -1,0 +1,34 @@
+[Unit]
+Description=Sistem Rekomendasi Menu MBG
+Documentation=https://github.com/indrafata/mbg-rekomendasi-menu
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/mbg/app
+EnvironmentFile=/opt/mbg/.env
+ExecStart=/opt/mbg/venv/bin/gunicorn \
+    --workers 4 \
+    --threads 2 \
+    --bind 127.0.0.1:5000 \
+    --access-logfile /opt/mbg/logs/access.log \
+    --error-logfile /opt/mbg/logs/error.log \
+    --access-logformat '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"' \
+    --timeout 30 \
+    --graceful-timeout 15 \
+    --keep-alive 5 \
+    --worker-class gthread \
+    app:app
+Restart=always
+RestartSec=10
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

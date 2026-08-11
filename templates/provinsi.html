@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}{{ provinsi.provinsi }} | Menu MBG{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/detail.css') }}?v=10" />
+{% endblock %}
+
+{% set pill = {"Tinggi": "pill-tinggi", "Sedang": "pill-sedang", "Rendah": "pill-rendah"} %}
+
+{% block content %}
+<div class="page">
+  <div class="prov-head">
+    <h1>{{ provinsi.provinsi }}</h1>
+  </div>
+  <p class="page-lead">
+    Tingkat kewaspadaan dan variasi menu makan siang untuk setiap jenjang
+    pendidikan. Tingkat ditentukan dari pengelompokan profil risiko siswa,
+    dan seluruh menu di bawah disusun khusus untuk provinsi ini.
+  </p>
+
+  {% set first_available = namespace(found=false) %}
+  {% for j in provinsi.jenjang %}
+    {% if j.tersedia %}
+      {% set open = not first_available.found %}
+      {% set first_available.found = true %}
+      <section class="jenjang {{ 'open' if open else '' }}" data-jenjang="{{ j.jenjang }}" data-tingkat="{{ j.tingkat }}">
+        <button class="jenjang-head" aria-expanded="{{ 'true' if open else 'false' }}">
+          <span class="jenjang-name">{{ j.jenjang }}</span>
+          <span class="pill {{ pill[j.tingkat] }}">{{ j.label_awam }}</span>
+          <span class="jenjang-meta">{{ j.jumlah_menu }} variasi menu <span class="chev">&#9660;</span></span>
+        </button>
+        <div class="jenjang-body">
+          <div class="risk-row">
+            <div class="risk-item">
+              <b>{{ (j.rate_alergi * 100)|round(1) }}%</b>
+              <span>tingkat alergi
+                <button class="info-dot" type="button" title="Persentase siswa dengan riwayat alergi makanan, dari data penerima manfaat MBG.">i</button>
+              </span>
+            </div>
+            <div class="risk-item">
+              <b>{{ (j.rate_intoleransi * 100)|round(1) }}%</b>
+              <span>tingkat intoleransi
+                <button class="info-dot" type="button" title="Persentase siswa yang sulit mencerna komponen tertentu, misalnya laktosa atau gluten.">i</button>
+              </span>
+            </div>
+            <div class="risk-item">
+              <b>{{ (j.rate_fobia * 100)|round(1) }}%</b>
+              <span>kecenderungan fobia makanan
+                <button class="info-dot" type="button" title="Kecenderungan menolak makanan tertentu karena selera, bukan alasan medis.">i</button>
+              </span>
+            </div>
+            {% if j.isl_rata is not none %}
+            <div class="risk-item">
+              <b>{{ (j.isl_rata * 100)|round(0)|int }}%</b>
+              <span>ketersediaan bahan lokal
+                <button class="info-dot" type="button" title="Rata-rata Indeks Sumber Lokal seluruh menu jenjang ini: seberapa besar kebutuhan bahan dapat dipenuhi produksi provinsi sendiri.">i</button>
+              </span>
+            </div>
+            {% endif %}
+          </div>
+          {% if j.is_imputed %}
+          <p class="imputed-note">Sebagian angka pada jenjang ini hasil estimasi karena data asli tidak lengkap.</p>
+          {% endif %}
+
+          <div class="menu-grid" data-menu-slot></div>
+        </div>
+      </section>
+    {% else %}
+      <section class="jenjang">
+        <button class="jenjang-head" disabled aria-disabled="true">
+          <span class="jenjang-name">{{ j.jenjang }}</span>
+          <span class="pill pill-kosong">{{ j.label_awam }}</span>
+        </button>
+      </section>
+    {% endif %}
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <script nonce="{{ csp_nonce }}">
+    window.MBG = {
+      apiMenus: "{{ url_for('api.api_menus') }}",
+      menuUrlBase: "{{ url_for('pages.index') }}menu/",
+      provinsi: {{ provinsi.provinsi | tojson }}
+    };
+  </script>
+  <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/provinsi.js') }}?v=10"></script>
+{% endblock %}

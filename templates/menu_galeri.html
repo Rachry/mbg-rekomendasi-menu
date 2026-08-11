@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Galeri Menu | MBG{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/detail.css') }}?v=10" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages.css') }}?v=6" />
+{% endblock %}
+
+{% block content %}
+<div class="page">
+  <p class="eyebrow">Galeri</p>
+  <h1>Variasi menu makan siang</h1>
+  <p class="page-lead">
+    Menu disusun per provinsi, sehingga bahan yang dipakai mengikuti apa yang
+    tersedia di daerah masing-masing. Saring menurut provinsi, jenjang, dan
+    tingkat kewaspadaan untuk membandingkan komposisinya.
+  </p>
+
+  <div class="filter-bar">
+    <div class="field">
+      <label for="g-provinsi">Provinsi</label>
+      <select id="g-provinsi">
+        <option value="">Semua provinsi</option>
+        {% for p in provinsi_list %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="g-jenjang">Jenjang</label>
+      <select id="g-jenjang">
+        <option value="">Semua jenjang</option>
+        {% for j in jenjang_list %}<option value="{{ j }}">{{ j }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="g-tingkat">Tingkat kewaspadaan</label>
+      <select id="g-tingkat">
+        <option value="">Semua tingkat</option>
+        {% for t in tingkat_list %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+      </select>
+    </div>
+    <span class="filter-count" id="g-count"></span>
+  </div>
+
+  <div class="menu-grid" id="g-grid"></div>
+
+  <div style="text-align:center;margin-top:var(--space-6)">
+    <button type="button" class="btn" id="g-lagi" hidden>Muat lagi</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+  <script nonce="{{ csp_nonce }}">
+    window.MBG = {
+      apiMenus: "{{ url_for('api.api_menus') }}",
+      menuUrlBase: "{{ url_for('pages.index') }}menu/"
+    };
+  </script>
+  <script nonce="{{ csp_nonce }}" src="{{ url_for('static', filename='js/galeri.js') }}?v=10"></script>
+{% endblock %}

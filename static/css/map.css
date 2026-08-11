@@ -1,0 +1,236 @@
+/* ===========================================================================
+   map.css  —  Halaman peta: panggung peta, panel kontrol, legenda, kompas
+   Theme-aware, glassmorphism floating panel
+   =========================================================================== */
+
+.map-main {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.map-stage {
+  position: relative;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 320px;
+}
+
+#peta {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-primary);
+  z-index: 0;
+}
+
+/* Tooltip provinsi */
+.leaflet-tooltip.prov-tip {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.65rem;
+  font-family: var(--body);
+  box-shadow: var(--shadow-md);
+}
+.leaflet-tooltip.prov-tip strong { display: block; font-size: var(--text-sm); }
+.leaflet-tooltip.prov-tip span { display: block; font-size: var(--text-xs); opacity: 0.85; margin-top: 0.1rem; }
+.leaflet-tooltip.prov-tip::before { display: none; }
+
+/* Panel kontrol mengambang (glassmorphism) */
+.panel {
+  position: absolute;
+  top: 1.2rem;
+  left: 1.2rem;
+  z-index: 1000;
+  width: 320px;
+  max-width: calc(100vw - 2.4rem);
+  background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid color-mix(in srgb, var(--border-default) 70%, transparent);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md), 0 0 0 1px rgba(255,255,255,0.05) inset;
+  max-height: calc(100% - 2.4rem);
+  overflow-y: auto;
+  transition:
+    background-color var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-out);
+}
+
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 1.1rem 1.2rem 0.6rem;
+}
+.panel-head-text { flex: 1 1 auto; min-width: 0; }
+.panel-head h1 { font-size: var(--text-lg); margin-bottom: 0.3rem; }
+.panel-head p { margin: 0; color: var(--text-secondary); font-size: var(--text-sm); }
+
+.panel-toggle {
+  flex: none;
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+.panel-toggle:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.panel-toggle .chev { font-size: 0.7rem; transition: transform 0.2s var(--ease-out); }
+.panel.collapsed .panel-toggle .chev { transform: rotate(180deg); }
+
+.panel-body {
+  padding: 0.6rem 1.2rem 1.2rem;
+  /* max-height dipakai hanya untuk menganimasikan pelipatan panel. Nilainya
+     harus jauh melebihi tinggi isi sebenarnya, sebab isi yang melampauinya
+     akan terpotong dan tidak dapat digulir. Nilai 600px sebelumnya terlampaui
+     begitu keterangan pada lapisan produksi dibentangkan. */
+  max-height: 300vh;
+  overflow: visible;
+  transition:
+    max-height var(--duration-normal) var(--ease-out),
+    padding var(--duration-normal) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
+  opacity: 1;
+}
+.panel.collapsed .panel-body {
+  max-height: 0;
+  overflow: hidden;   /* memotong hanya saat terlipat */
+  padding-top: 0; padding-bottom: 0;
+  opacity: 0;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+
+.panel select {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-family: var(--body);
+  font-size: var(--text-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+.panel select:focus {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-glow);
+  outline: none;
+}
+
+.panel-reset {
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.3rem;
+}
+
+/* Legenda kewaspadaan */
+.map-legend {
+  position: absolute;
+  bottom: 1.2rem;
+  left: 1.2rem;
+  z-index: 900;
+  background: color-mix(in srgb, var(--bg-secondary) 90%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--border-default) 60%, transparent);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 0.8rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  transition:
+    background-color var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-out);
+}
+.map-legend h2 {
+  font-family: var(--body);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 0 0 0.2rem;
+}
+
+/* Kompas */
+.compass {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.2rem;
+  z-index: 900;
+  width: 40px; height: 40px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--bg-secondary) 90%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--border-default) 60%, transparent);
+  border-radius: 50%;
+  box-shadow: var(--shadow-sm);
+  font-family: var(--body);
+  color: var(--text-secondary);
+  line-height: 1;
+  transition:
+    background-color var(--duration-normal) var(--ease-out),
+    border-color var(--duration-normal) var(--ease-out);
+}
+.compass .n { font-size: 0.68rem; font-weight: 700; }
+.compass .needle { color: var(--accent); font-size: 0.7rem; margin-top: 1px; }
+
+/* Leaflet zoom control — kanan bawah */
+.leaflet-control-zoom {
+  position: absolute !important;
+  bottom: 1.2rem !important;
+  right: 1.2rem !important;
+  top: auto !important;
+  left: auto !important;
+}
+
+/* Responsif */
+@media (max-width: 760px) {
+  .panel {
+    top: 0.7rem; left: 0.7rem; right: 0.7rem; width: auto;
+    max-height: 60%;
+  }
+  .map-legend { left: 0.7rem; bottom: 0.7rem; }
+  .compass { right: 0.7rem; top: 0.7rem; }
+  .leaflet-control-zoom { right: 0.7rem !important; bottom: 0.7rem !important; }
+}
+
+/* Legenda skala produksi */
+.legend-skala { display: flex; height: 10px; border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
+.legend-step { flex: 1; }
+.legend-skala-label { display: flex; justify-content: space-between;
+  font-size: 0.7rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.legend-catatan { font-size: 0.68rem; color: var(--text-muted);
+  margin: 0.5rem 0 0; line-height: 1.45; max-width: 190px; }
+.legend-peringatan { font-size: 0.68rem; color: var(--warning);
+  margin: 0.4rem 0 0; line-height: 1.45; max-width: 190px; }
+.field .cek { display: flex; align-items: flex-start; gap: 0.5rem;
+  font-size: 0.8rem; font-weight: 400; cursor: pointer; }
+.field .cek input { accent-color: var(--accent); margin-top: 2px; }
+.field-hint { display: block; font-size: 0.68rem; color: var(--text-muted);
+  margin-top: 0.3rem; line-height: 1.4; }
+
+/* Keterangan mengapa pilihan penyaring itu ada */
+.ket-meragukan { margin-top: 0.5rem; }
+.ket-meragukan summary { font-size: 0.72rem; color: var(--accent);
+  cursor: pointer; font-weight: 600; }
+.ket-meragukan p { font-size: 0.7rem; color: var(--text-muted);
+  line-height: 1.55; margin: 0.5rem 0 0; }

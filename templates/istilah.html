@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block title %}Daftar Istilah | MBG{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages.css') }}?v=11" />
+  <style>
+    .ist-grup { margin-bottom: var(--space-8); }
+    .ist-grup h2 { font-size: var(--text-xl); margin-bottom: var(--space-3);
+                   padding-bottom: var(--space-2); border-bottom: 1px solid var(--border-light); }
+    .ist-item { padding: var(--space-4) 0; border-bottom: 1px solid var(--border-light); }
+    .ist-item:last-child { border-bottom: none; }
+    .ist-kepala { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2);
+                  margin-bottom: var(--space-1); }
+    .ist-singkat { font-weight: 700; font-family: var(--display); font-size: var(--text-lg); }
+    .ist-panjang { color: var(--text-secondary); font-size: var(--text-base); }
+    .ist-arti { color: var(--text-secondary); font-size: var(--text-sm); line-height: 1.65; margin: 0; }
+    .ist-nav { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-6); }
+    .ist-nav a { font-size: var(--text-sm); padding: var(--space-1) var(--space-3);
+                 border: 1px solid var(--border-default); border-radius: 999px;
+                 text-decoration: none; color: var(--text-secondary); }
+    .ist-nav a:hover { border-color: var(--accent); color: var(--accent); }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="page prose">
+  <p class="eyebrow">Rujukan</p>
+  <h1>Daftar istilah dan singkatan</h1>
+  <p class="page-lead">
+    Setiap singkatan pada situs ini ditulis lengkap saat pertama kali muncul di
+    tiap halaman. Halaman ini mengumpulkan semuanya di satu tempat, supaya bisa
+    dibuka kapan saja tanpa harus mencari-cari.
+  </p>
+
+  <nav class="ist-nav">
+    {% for nama in kelompok %}
+    <a href="#grup-{{ loop.index }}">{{ nama }}</a>
+    {% endfor %}
+  </nav>
+
+  {% for nama, daftar in kelompok.items() %}
+  <section class="ist-grup" id="grup-{{ loop.index }}">
+    <h2>{{ nama }}</h2>
+    {% for i in daftar %}
+    <div class="ist-item" id="istilah-{{ i.singkatan | lower }}">
+      <div class="ist-kepala">
+        <span class="ist-singkat">{{ i.singkatan }}</span>
+        <span class="ist-panjang">{{ i.panjang }}</span>
+      </div>
+      <p class="ist-arti">{{ i.arti }}</p>
+    </div>
+    {% endfor %}
+  </section>
+  {% endfor %}
+
+  <h2>Istilah lain yang sering muncul</h2>
+  <div class="ist-grup">
+    <div class="ist-item">
+      <div class="ist-kepala"><span class="ist-singkat">Tingkat kewaspadaan</span></div>
+      <p class="ist-arti">
+        Hasil pengelompokan provinsi menjadi tiga tingkat menurut profil alergi,
+        intoleransi, dan fobia makanan peserta didik. Istilah teknisnya Tinggi,
+        Sedang, dan Rendah; di seluruh tampilan ditulis sebagai
+        "Perlu sangat hati-hati", "Perlu hati-hati", dan "Relatif aman".
+        Tingkat ini menggambarkan seberapa hati-hati menu perlu disusun,
+        bukan penilaian terhadap daerahnya.
+      </p>
+    </div>
+    <div class="ist-item">
+      <div class="ist-kepala"><span class="ist-singkat">Jenjang</span></div>
+      <p class="ist-arti">
+        Tingkat pendidikan yang dicakup penelitian ini, yaitu SD, SMP, SMA,
+        dan SMK. PAUD, SLB, SKB, dan PKBM tidak diikutsertakan karena populasinya
+        terlalu beragam dan sampelnya kecil.
+      </p>
+    </div>
+    <div class="ist-item">
+      <div class="ist-kepala"><span class="ist-singkat">Alergen</span></div>
+      <p class="ist-arti">
+        Bahan yang dapat memicu reaksi alergi, yaitu reaksi berlebihan sistem
+        kekebalan tubuh yang dapat berakibat serius. Delapan jenis yang dilacak:
+        telur, ikan, susu, kerang, kacang tanah, kacang pohon, gandum, dan kedelai.
+      </p>
+    </div>
+    <div class="ist-item">
+      <div class="ist-kepala"><span class="ist-singkat">Intoleransi</span></div>
+      <p class="ist-arti">
+        Kesulitan mencerna komponen pangan tertentu, misalnya laktosa pada susu
+        atau gluten pada gandum. Berbeda dari alergi, intoleransi tidak
+        melibatkan reaksi sistem kekebalan tubuh.
+      </p>
+    </div>
+    <div class="ist-item">
+      <div class="ist-kepala"><span class="ist-singkat">Fobia makanan</span></div>
+      <p class="ist-arti">
+        Kecenderungan menolak makanan tertentu karena selera atau ketidakbiasaan,
+        bukan karena alasan medis. Dikenal juga sebagai neofobia pangan. Bahan
+        dengan skor di atas 0,30 ditandai sebagai bahan yang umum ditolak anak.
+      </p>
+    </div>
+    <div class="ist-item">
+      <div class="ist-kepala"><span class="ist-singkat">Status halal</span></div>
+      <p class="ist-arti">
+        Sifat bawaan bahan yang menyatakan kehalalannya. Ditandai pada tingkat
+        bahan maupun tingkat menu, sehingga menu yang memakai bahan non-halal
+        selalu terlihat beserta nama bahan penyebabnya.
+      </p>
+    </div>
+    <div class="ist-item">
+      <div class="ist-kepala"><span class="ist-singkat">Kelompok pangan dan subkelompok</span></div>
+      <p class="ist-arti">
+        Pengelompokan bahan menurut jenisnya. Kelompok besarnya antara lain
+        karbohidrat, protein hewani, protein nabati, sayuran, buah, dan lemak.
+        Subkelompok memecahnya lebih halus, misalnya karbohidrat menjadi
+        serealia, umbi, dan sagu.
+      </p>
+    </div>
+    <div class="ist-item">
+      <div class="ist-kepala"><span class="ist-singkat">Rasio AKG</span></div>
+      <p class="ist-arti">
+        Perbandingan kandungan gizi sebuah menu terhadap targetnya. Nilai 1
+        berarti tepat memenuhi target. Menu diterima bila seluruh rasionya
+        berada pada rentang 0,80 sampai 1,20.
+      </p>
+    </div>
+    <div class="ist-item">
+      <div class="ist-kepala"><span class="ist-singkat">Skor gizi bahan</span></div>
+      <p class="ist-arti">
+        Nilai yang menggambarkan kepadatan gizi sebuah bahan, dihitung pipeline
+        dari kandungan protein, serat, lemak, dan energinya. Dipakai sebagai
+        salah satu pilihan pengurutan hasil.
+      </p>
+    </div>
+    <div class="ist-item">
+      <div class="ist-kepala"><span class="ist-singkat">Koreksi pengambilan data</span></div>
+      <p class="ist-arti">
+        Perbaikan atas cacat yang timbul saat data ditarik dari sumbernya, bukan
+        atas angka yang diterbitkan lembaga resmi. Ada dua koreksi pada
+        penelitian ini. Pertama, kelompok biofarmaka tercatat dalam kilogram
+        sehingga nilainya dibagi seribu agar seragam menjadi ton. Kedua, satu
+        baris kunyit Jawa Timur rusak karena dua sel tersambung menjadi satu,
+        dan diperbaiki memakai angka resmi Badan Pusat Statistik. Selain kedua
+        hal itu, angka ditampilkan apa adanya tanpa penyaringan kewajaran.
+      </p>
+    </div>
+    <div class="ist-item">
+      <div class="ist-kepala"><span class="ist-singkat">Choropleth</span></div>
+      <p class="ist-arti">
+        Peta yang mewarnai tiap wilayah sesuai nilai datanya. Peta kewaspadaan
+        memakai warna kategori, sedangkan peta produksi memakai skala besaran
+        sehingga legendanya berbeda jenis.
+      </p>
+    </div>
+    <div class="ist-item">
+      <div class="ist-kepala"><span class="ist-singkat">Imputasi</span></div>
+      <p class="ist-arti">
+        Pengisian nilai yang kosong dengan perkiraan berdasarkan data lain.
+        Pada data 7 Agustus 2026 tidak ada satu pun baris hasil imputasi.
+        Penanda tetap disediakan pada tabel data mentah maupun halaman detail
+        provinsi, sehingga akan muncul sendiri bila pengambilan berikutnya
+        memuat baris hasil imputasi.
+      </p>
+    </div>
+    <div class="ist-item">
+      <div class="ist-kepala"><span class="ist-singkat">Pra-hitung</span></div>
+      <p class="ist-arti">
+        Cara kerja yang menyimpan hasil perhitungan lebih dulu, sehingga situs
+        hanya membaca. Tidak ada pemodelan yang dijalankan saat halaman dibuka,
+        dan hasil yang ditampilkan selalu sama untuk masukan yang sama.
+      </p>
+    </div>
+  </div>
+
+  <p class="empty-state" style="margin-top:var(--space-6)">
+    Penjelasan cara kerja tiap metode ada di halaman
+    <a href="{{ url_for('pages.metodologi') }}">Metodologi</a>, sedangkan sumber
+    dan batasan datanya ada di halaman
+    <a href="{{ url_for('pages.tentang') }}">Tentang</a>.
+  </p>
+</div>
+{% endblock %}

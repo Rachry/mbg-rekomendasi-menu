@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}Tentang | MBG{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pages.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="page prose">
+  <p class="eyebrow">Tentang</p>
+  <h1>Sumber data dan batasan penelitian</h1>
+
+  <div class="netralitas" role="note" aria-label="Pernyataan netralitas">
+    <h2>Pernyataan netralitas penulis</h2>
+    <p>
+      <strong>Penulis tidak mendukung dan tidak menolak Program Makan Bergizi
+      Gratis (MBG).</strong> Penelitian ini disusun murni sebagai skripsi
+      akademik Program Studi Informatika, Universitas Gunadarma.
+    </p>
+    <p>
+      Tujuan penelitian adalah menguji apakah metode rekomendasi berbasis data
+      dapat menyusun menu yang aman, sesuai wilayah, dan cukup gizi. Yang
+      diteliti adalah <em>metodenya</em>, bukan program yang menjadi sumber
+      datanya.
+    </p>
+    <p>Karena itu, situs ini tidak dapat dan tidak bermaksud:</p>
+    <ul>
+      <li>menilai berhasil atau tidaknya pelaksanaan program di lapangan;</li>
+      <li>mengukur mutu makanan yang benar-benar disajikan kepada peserta didik;</li>
+      <li>menjadi dasar dukungan maupun penolakan terhadap kebijakan program;</li>
+      <li>menggantikan penilaian tenaga gizi atau tenaga kesehatan.</li>
+    </ul>
+    <p>
+      Seluruh angka pada situs ini adalah keluaran perhitungan atas data yang
+      tersedia, bukan pernyataan sikap. Setiap keterbatasan datanya ditulis
+      terbuka di bagian bawah halaman ini.
+    </p>
+  </div>
+  <p class="page-lead">
+    Situs ini adalah lapisan penyajian dari skripsi Informatika tentang sistem
+    rekomendasi menu Program Makan Bergizi Gratis (MBG). Situs ini ditujukan
+    untuk <strong>petugas Satuan Pelayanan Pemenuhan Gizi (SPPG)</strong> dan
+    <strong>pemangku kebijakan</strong> sebagai alat bantu perencanaan menu
+    berbasis data. Halaman ini menjelaskan
+    dari mana datanya berasal dan apa yang tidak bisa disimpulkan darinya.
+  </p>
+
+  <h2>Apa yang ditampilkan situs ini</h2>
+  <p>
+    Sistem mengelompokkan {{ ringkasan.total_provinsi }} provinsi ke dalam tiga
+    tingkat kewaspadaan untuk empat jenjang pendidikan (SD, SMP, SMA, SMK),
+    lalu menyusun <strong>{{ ringkasan.total_menu }} variasi menu</strong> makan
+    siang yang sesuai dengan target gizi tiap jenjang. Berbeda dari versi
+    sebelumnya, menu kini disusun per provinsi: bahan yang dipakai mengikuti
+    apa yang benar-benar diproduksi daerah masing-masing, sehingga dua provinsi
+    dengan tingkat kewaspadaan sama bisa mendapat menu yang berbeda.
+    Seluruh perhitungan dilakukan sekali di Google Colab dan disimpan ke basis
+    data; halaman web hanya membaca hasil itu, tanpa menjalankan model ulang
+    saat diakses.
+  </p>
+
+  <h2>Sumber data</h2>
+  <p>
+    Data alergi, intoleransi, dan fobia makanan siswa penerima manfaat
+    bersumber dari <span class="term">API Kemendikdasmen</span>
+    <em>(Kementerian Pendidikan Dasar dan Menengah)</em>, lewat layanan
+    rekap nasional dan provinsi pada program MBG. Pengambilan dilakukan sekali
+    pada <strong>7 Agustus 2026 pukul 17.44</strong>, dan seluruh angka pada
+    situs ini terikat pada pengambilan tersebut. Pengambilan pada tanggal
+    berbeda akan menghasilkan angka berbeda, sebab cakupan program masih
+    bertambah.
+  </p>
+  <p>
+    Komposisi gizi tiap bahan mengacu pada <span class="term">TKPI 2017</span>
+    <em>(Tabel Komposisi Pangan Indonesia)</em>, mencakup
+    {{ ringkasan.total_bahan }} bahan, dan {{ ringkasan.bahan_terpakai }} di
+    antaranya benar-benar muncul pada menu. Target kecukupan gizi memakai
+    <span class="term">AKG</span> <em>(Angka Kecukupan Gizi)</em> sesuai
+    Permenkes No. 28 Tahun 2019. Daftar alergen mengikuti referensi WHO/FAO
+    yang memuat 14 alergen, sedangkan acuan intoleransi mencakup laktosa dan
+    gluten. Dari keempat belas alergen tersebut, delapan kelompok yang paling
+    lazim dijumpai pada bahan menu Indonesia yang menentukan skor keparahan;
+    enam sisanya tetap tercatat sebagai penanda pada tiap bahan.
+  </p>
+  <p>
+    Dua sumber pangan dipakai untuk keperluan yang berbeda dan tidak boleh
+    tertukar. <span class="term">Neraca Bahan Makanan (NBM) Badan Pangan
+    Nasional 2023 per provinsi</span> dipakai menghitung Indeks Pola Pangan
+    Wilayah, yaitu ukuran seberapa jauh sebuah provinsi bertumpu pada kelompok
+    pangan tertentu dibandingkan rata-rata nasional. Sementara
+    <span class="term">statistik produksi pangan Badan Pusat Statistik dan
+    Kementerian Pertanian</span>, dihimpun dari 100 berkas untuk tahun
+    {{ ringkasan.produksi_tahun_awal }} sampai
+    {{ ringkasan.produksi_tahun_akhir }}, dipakai menghitung Indeks Sumber
+    Lokal, yaitu pangsa sebuah
+    komoditas di antara komoditas sebanding yang dihasilkan provinsi itu
+    sendiri.
+  </p>
+  <p>
+    Neraca Bahan Makanan nasional 2022-2024 dipakai hanya sebagai konteks
+    pembanding, bukan sebagai masukan perhitungan. Ketersediaan energi nasional
+    tercatat 2.847 kkal per kapita per hari pada 2024, dan angka itu masih
+    berstatus <em>angka sangat sementara</em> menurut berkas sumbernya.
+  </p>
+
+  <h2>Batasan penelitian</h2>
+  <p>
+    Beberapa hal perlu diketahui sebelum membaca peta dan menu sebagai
+    kesimpulan mutlak:
+  </p>
+  <ul>
+    <li>
+      Data hanya mencakup jenjang SD, SMP, SMA, dan SMK. Jenjang PAUD, SLB,
+      SKB, dan PKBM tidak diikutsertakan dalam pengelompokan karena
+      populasinya terlalu beragam dan sampelnya kecil untuk dianalisis
+      bersama jenjang reguler.
+    </li>
+    <li>
+      Dari {{ ringkasan.total_grid }} kombinasi provinsi dan jenjang yang
+      mungkin, hanya {{ ringkasan.total_baris_provinsi }} yang dipakai.
+      {{ ringkasan.baris_dibuang - 1 }} kombinasi dibuang karena jumlah penerima
+      manfaatnya nol, yaitu wilayah yang belum terjangkau program saat data
+      diambil, sehingga tidak ada yang dapat dihitung. Satu kombinasi lagi
+      dibuang karena mencatat jumlah kasus melampaui jumlah penerima manfaat,
+      yang tidak mungkin terjadi dan menandakan kekeliruan pencatatan pada
+      sumber.
+    </li>
+    <li>
+      {% if ringkasan.baris_imputed == 0 %}
+      Pada data yang dipakai sekarang <strong>tidak ada satu pun baris hasil
+      estimasi</strong> <em>(imputed)</em>. Seluruh angka berasal langsung dari
+      sumbernya. Situs tetap menyediakan penanda estimasi pada tabel data mentah
+      dan halaman detail provinsi, sehingga bila pengambilan berikutnya memuat
+      baris hasil estimasi, penandanya akan muncul dengan sendirinya.
+      {% else %}
+      Sebanyak <strong>{{ ringkasan.baris_imputed }}</strong> baris merupakan
+      hasil estimasi <em>(imputed)</em> karena data asli tidak lengkap saat
+      pengambilan. Baris tersebut ditandai pada tabel data mentah maupun pada
+      halaman detail provinsi, sehingga dapat dibedakan dari data terukur.
+      {% endif %}
+    </li>
+    <li>
+      Bobot tingkat kepentingan alergi, intoleransi, dan fobia makanan
+      disusun lewat satu pakar <em>(single-expert AHP)</em>, sesuai cakupan
+      skripsi S1. Bobot ini bisa berbeda bila dinilai oleh ahli gizi atau
+      tim yang lebih besar.
+    </li>
+    <li>
+      Empat provinsi hasil pemekaran Papua, yaitu Papua Selatan, Papua Tengah,
+      Papua Pegunungan, dan Papua Barat Daya, belum memiliki survei Neraca
+      Bahan Makanan (NBM) sendiri. Nilai pola pangannya mewarisi provinsi
+      induk, sehingga menggambarkan wilayah induk dan bukan hasil pengukuran
+      di provinsi tersebut.
+    </li>
+    <li>
+      Data produksi pangan ditampilkan apa adanya. Penelitian ini tidak menilai
+      kewajaran angka yang diterbitkan lembaga resmi, sehingga produksi yang
+      tampak timpang antarwilayah dibiarkan sebagaimana tercatat. Koreksi hanya
+      dilakukan bila ada dasar dokumenter pada berkas sumbernya: satuan kelompok
+      biofarmaka dibagi seribu karena judul kolom tabel Badan Pusat Statistik
+      (BPS) memang berbunyi kilogram, dan baris berlabel Papua Pegunungan pada
+      enam berkas buah dibuang karena isinya ternyata total nasional, bukan
+      produksi provinsi tersebut.
+    </li>
+    <li>
+      Angka produksi bukan angka konsumsi. Provinsi yang produksinya besar
+      belum tentu mengonsumsi sendiri hasil produksinya.
+    </li>
+    <li>
+      Indeks Sumber Lokal baru mencakup
+      <strong>{{ ringkasan.isl_cakupan_persen | angka }} persen</strong> baris bahan
+      pada menu. Sisanya tidak memiliki padanan komoditas pada statistik
+      produksi, sehingga pangsanya tidak dapat dihitung. Cakupannya tidak merata
+      antar kategori: buah, lemak, dan protein hewani mencapai 100 persen,
+      karbohidrat 81,4 persen, sayuran 65,2 persen, sedangkan protein nabati
+      hanya <strong>36,4 persen</strong>. Untuk bahan tanpa nilai, penyesuaian
+      terhadap wilayah bersandar pada pola pangan saja.
+    </li>
+    <li>
+      Sembilan bahan sayuran tidak tercatat sama sekali pada statistik
+      hortikultura Badan Pusat Statistik, yaitu brokoli, pare, daun singkong,
+      daun katuk, daun kelor, jantung pisang, nangka muda, rebung, dan daun
+      pepaya. Bahan tanpa data dibedakan tegas dari bahan yang tercatat tidak
+      diproduksi, sebab keduanya bermakna berbeda.
+    </li>
+    <li>
+      Sistem ini adalah alat bantu penelitian, bukan alat penilaian resmi
+      terhadap pelaksanaan Program Makan Bergizi Gratis (MBG) di lapangan.
+    </li>
+  </ul>
+
+  <h2>Lebih lanjut</h2>
+  <p>
+    Penjelasan langkah demi langkah tentang cara sistem menimbang risiko,
+    mengelompokkan daerah, dan menyusun menu tersedia di halaman
+    <a href="{{ url_for('pages.metodologi') }}">Metodologi</a>. Seluruh
+    rincian teknis, termasuk arsitektur dan kode, didokumentasikan terpisah
+    sebagai bagian dari naskah skripsi. Seluruh singkatan yang dipakai situs
+    ini dikumpulkan di halaman
+    <a href="{{ url_for('pages.istilah') }}">Daftar Istilah</a>.
+  </p>
+
+  {% if not alur_selesai %}
+  <div class="onboard-nav">
+    <a href="{{ url_for('lanjut', langkah=1) }}" class="btn btn-primary">Lanjut ke Data Mentah &rarr;</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

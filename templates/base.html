@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="id" data-theme>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Peta Kewaspadaan Menu MBG{% endblock %}</title>
+
+  <!-- Font: Fraunces (display) + Public Sans (UI). Dimuat asinkron. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=10" />
+
+  <!-- Anti-flash: set theme attribute before paint -->
+  <script nonce="{{ csp_nonce }}">
+    (function() {
+      var stored = localStorage.getItem('mbg-theme');
+      if (stored === 'light' || stored === 'dark') {
+        document.documentElement.setAttribute('data-theme', stored);
+      }
+      // If no stored preference, let CSS media query handle it (no attribute = auto)
+    })();
+  </script>
+
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{{ url_for('pages.index') }}">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-text">
+        <strong>Menu MBG</strong>
+        <small>Peta kewaspadaan &amp; variasi menu sekolah</small>
+      </span>
+    </a>
+    <nav class="topnav">
+      <a href="{{ url_for('pages.index') }}" {% if request.endpoint == 'pages.index' %}aria-current="page"{% endif %}>Peta</a>
+      <a href="{{ url_for('pages.rekomendasi') }}" {% if request.endpoint == 'pages.rekomendasi' %}aria-current="page"{% endif %}>Rekomendasi</a>
+      <a href="{{ url_for('pages.menu_galeri') }}" {% if request.endpoint == 'pages.menu_galeri' %}aria-current="page"{% endif %}>Galeri Menu</a>
+      <a href="{{ url_for('pages.cluster') }}" {% if request.endpoint == 'pages.cluster' %}aria-current="page"{% endif %}>Kelompok Daerah</a>
+    </nav>
+    <button class="theme-toggle" id="theme-toggle" aria-label="Ganti tema" title="Ganti tema gelap/terang">
+      <span class="icon-sun" aria-hidden="true">☀</span>
+      <span class="icon-moon" aria-hidden="true">🌙</span>
+    </button>
+    <button class="nav-toggle" aria-label="Buka menu">≡</button>
+  </header>
+
+  {# Banner langkah hanya ditampilkan selama alur penjelasan berlangsung.
+     Setelah ketiganya dilalui, halaman Tentang, Data Mentah, dan Metodologi
+     dapat dibuka kapan saja sebagai halaman biasa, sehingga penanda langkah
+     justru membingungkan. #}
+  {% if alur_tahap and not alur_selesai %}
+  <div id="onboard-banner">
+    <div class="ob-inner">
+      <span class="ob-step">Langkah {{ alur_tahap.langkah }} dari {{ alur_total }}</span>
+      <span class="ob-title">{{ alur_tahap.judul }}</span>
+      <span class="ob-desc">
+        Baca halaman ini lalu klik tombol lanjut di bagian bawah. Ketiga halaman
+        ini wajib dilalui sebelum peta dan menu terbuka.
+      </span>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if remah and remah|length > 1 %}
+  <nav class="remah" aria-label="Remah navigasi">
+    <button type="button" class="remah-kembali" id="remah-kembali"
+            data-induk="{{ remah[-2].url or '/' }}">
+      &larr; <span id="remah-kembali-label">Kembali</span>
+    </button>
+    <ol>
+      {% for r in remah %}
+      <li>
+        {% if r.url and not loop.last %}
+          <a href="{{ r.url }}">{{ r.label }}</a>
+        {% else %}
+          <span aria-current="page">{{ r.label }}</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+  </nav>
+  {% endif %}
+
+  <main class="{% block main_class %}{% endblock %}">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block footer %}
+  <footer class="sitefoot">
+    <nav class="footnav">
+      <a href="{{ url_for('pages.metodologi') }}">Metodologi</a>
+      <span aria-hidden="true">|</span>
+      <a href="{{ url_for('pages.data_mentah') }}">Data Mentah</a>
+      <span aria-hidden="true">|</span>
+      <a href="{{ url_for('pages.produsen') }}">Produsen</a>
+      <span aria-hidden="true">|</span>
+      <a href="{{ url_for('pages.tentang') }}">Tentang</a>
+      <span aria-hidden="true">|</span>
+      <a href="{{ url_for('pages.istilah') }}">Daftar Istilah</a>
+    </nav>
+    <p>
+      Sistem rekomendasi menu Program Makan Bergizi Gratis (MBG).
+      Data diperlakukan sebagai sumber penelitian, bukan penilaian program.
+    </p>
+    <p class="foot-meta">Skripsi Informatika &middot; Universitas Gunadarma &middot; <a href="{{ url_for('ulangi_panduan') }}" style="color:var(--text-muted);font-size:0.75rem">baca ulang panduan</a></p>
+  </footer>
+  {% endblock %}
+
+  <script nonce="{{ csp_nonce }}">
+    // Theme Toggle
+    (function() {
+      var STORAGE_KEY = 'mbg-theme';
+      var html = document.documentElement;
+      var toggle = document.getElementById('theme-toggle');
+
+      function getTheme() {
+        return html.getAttribute('data-theme') || '';
+      }
+
+      function setTheme(theme) {
+        html.setAttribute('data-theme', theme);
+        if (theme) {
+          localStorage.setItem(STORAGE_KEY, theme);
+        } else {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      }
+
+      // Determine current effective theme
+      function effectiveTheme() {
+        var attr = getTheme();
+        if (attr === 'light' || attr === 'dark') return attr;
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+
+      toggle.addEventListener('click', function() {
+        var current = effectiveTheme();
+        setTheme(current === 'dark' ? 'light' : 'dark');
+      });
+
+      // Listen for OS-level preference changes (only when no manual override)
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+        if (!getTheme()) {
+          // No manual override, theme follows system automatically via CSS
+        }
+      });
+    })();
+
+    // Mobile nav toggle
+    document.querySelector('.nav-toggle')?.addEventListener('click', function () {
+      document.querySelector('.topnav')?.classList.toggle('open');
+    });
+
+    // Banner alur dirender server, lihat blok alur di bagian atas berkas ini.
+
+    // Tombol kembali
+    // Remah menjawab "saya ada di mana", tombol ini menjawab "saya datang
+    // dari mana". Keduanya berbeda: satu halaman dapat dicapai lewat
+    // beberapa jalur, misalnya menu dapat dibuka dari galeri, dari halaman
+    // provinsi, atau dari kelompok daerah.
+    //
+    // Bila pengunjung berpindah dari dalam situs ini, tombol mengembalikan
+    // ke halaman sebelumnya. Bila tiba dari luar atau langsung menempelkan
+    // alamat, tombol mengarah ke induk hierarki yang disebut remah.
+    (function () {
+      var tombol = document.getElementById('remah-kembali');
+      if (!tombol) return;
+      var label = document.getElementById('remah-kembali-label');
+      var induk = tombol.getAttribute('data-induk') || '/';
+
+      var dariDalam = false;
+      try {
+        dariDalam = !!document.referrer &&
+                    new URL(document.referrer).origin === window.location.origin &&
+                    new URL(document.referrer).pathname !== window.location.pathname;
+      } catch (e) { dariDalam = false; }
+
+      if (!dariDalam && label) {
+        var remahItem = document.querySelectorAll('.remah ol li');
+        if (remahItem.length > 1) {
+          label.textContent = remahItem[remahItem.length - 2].textContent.trim();
+        }
+      }
+
+      tombol.addEventListener('click', function () {
+        if (dariDalam && window.history.length > 1) {
+          window.history.back();
+        } else {
+          window.location.href = induk;
+        }
+      });
+    })();
+
+    // Toast
+    (function() {
+      var container = document.getElementById('toast-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+      }
+
+      var ICONS = { error: '⚠', warning: '△', success: '✓' };
+
+      window.showToast = function(msg, type, duration) {
+        type = type || 'error';
+        duration = duration || 6000;
+
+        var toast = document.createElement('div');
+        toast.className = 'toast toast-' + type;
+
+        var icon = document.createElement('span');
+        icon.className = 'toast-icon';
+        icon.textContent = ICONS[type] || '⚠';
+
+        var body = document.createElement('div');
+        body.className = 'toast-body';
+        body.innerHTML = msg;
+
+        var close = document.createElement('button');
+        close.className = 'toast-close';
+        close.innerHTML = '×';
+        close.setAttribute('aria-label', 'Tutup');
+        close.onclick = function() { dismiss(toast); };
+
+        toast.appendChild(icon);
+        toast.appendChild(body);
+        toast.appendChild(close);
+        container.appendChild(toast);
+
+        var timer = setTimeout(function() { dismiss(toast); }, duration);
+        toast._timer = timer;
+
+        var toasts = container.querySelectorAll('.toast');
+        while (toasts.length > 4) {
+          dismiss(toasts[0]);
+          toasts = container.querySelectorAll('.toast');
+        }
+      };
+
+      function dismiss(toast) {
+        if (toast._dismissed) return;
+        toast._dismissed = true;
+        clearTimeout(toast._timer);
+        toast.classList.add('leaving');
+        setTimeout(function() {
+          if (toast.parentNode) toast.parentNode.removeChild(toast);
+        }, 200);
+      }
+    })();
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

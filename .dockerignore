@@ -1,0 +1,55 @@
+# Semakin sedikit yang masuk ke image, semakin kecil permukaan serangannya dan
+# semakin cepat buildnya. Berkas yang tidak dibutuhkan aplikasi saat berjalan
+# tidak perlu ikut, sekalipun tidak berbahaya.
+
+# Rahasia
+.env
+.env.*
+*.env
+*.pem
+*.key
+
+# Git dan CI
+.git/
+.gitignore
+.github/
+.gitattributes
+
+# Lingkungan Python
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+
+# Pengujian
+# Tidak ikut ke image produksi. Pengujian dijalankan CI sebelum image dibangun,
+# bukan di dalam container yang melayani permintaan.
+tests/
+.pytest_cache/
+pytest-cache-files-*/
+.coverage
+coverage.xml
+htmlcov/
+
+# Dokumentasi
+*.md
+!README.md
+LICENSE
+
+# Skrip khusus Windows
+*.bat
+SETUP_VENV.md
+
+# Contoh dan konfigurasi jalur deploy alternatif
+# nginx.conf dan mbg.service dipakai pada jalur VPS, bukan jalur container.
+deploy/
+requirements-dev.in
+requirements-dev.lock
+requirements.txt
+
+# Arsip
+.archive/
+*.zip
+*.tar.gz
+*.log

@@ -1,0 +1,53 @@
+# render.yaml: Infrastructure as Code untuk Render.
+#
+# Dengan berkas ini, seluruh pengaturan layanan berada di dalam repo dan ikut
+# tercatat di riwayat Git. Tidak ada lagi pengaturan yang hanya hidup di dasbor
+# dan hilang ketika layanan dibuat ulang.
+#
+# Cara pakai: New > Blueprint di dasbor Render, arahkan ke repo ini.
+#
+# Berkas ini hanya berlaku untuk Render. Untuk platform lain, satu-satunya yang
+# dibutuhkan adalah Dockerfile di akar repo, dan variabel lingkungan yang sama
+# diisi lewat antarmuka masing-masing. Daftarnya ada di deploy/contoh.env.
+
+services:
+  - type: web
+    name: mbg-rekomendasi
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: singapore          # paling dekat dengan Indonesia
+    plan: free                 # naikkan ke starter bila cold start mengganggu
+    branch: main
+    autoDeployTrigger: commit  # tiap push ke main memicu build
+
+    healthCheckPath: /health
+
+    envVars:
+      # generateValue meminta Render membuat nilai acak sekali lalu
+      # menyimpannya. Nilainya tetap sama lintas restart dan lintas worker,
+      # dan tidak pernah muncul di repo.
+      - key: MBG_SECRET_KEY
+        generateValue: true
+
+      # Render menaruh load balancer sendiri di depan layanan, jadi ada satu
+      # hop. Naikkan ke 2 bila nanti Cloudflare dipasang di depannya.
+      #
+      # Verifikasi setelah deploy: buka log, kirim satu permintaan, lalu
+      # periksa apakah alamat yang tercatat memang alamat Anda dan bukan
+      # alamat internal Render. Kalau salah, pembatas laju tidak bekerja
+      # sebagaimana mestinya.
+      - key: MBG_TRUSTED_PROXIES
+        value: "1"
+
+      - key: FLASK_ENV
+        value: production
+
+      # Lihat gunicorn.conf.py untuk alasan angka satu.
+      - key: WEB_CONCURRENCY
+        value: "1"
+
+      - key: MBG_LOG_LEVEL
+        value: INFO
+
+    # RENDER_GIT_COMMIT disediakan Render secara otomatis dan dibaca config.py
+    # sebagai penanda rilis, jadi tidak perlu didaftarkan di sini.
