@@ -5,7 +5,7 @@
 # Base image sebaiknya dipatok ke digest agar build dapat direproduksi:
 #   docker inspect --format='{{index .RepoDigests 0}}' python:3.11-slim-bookworm
 
-FROM python:3.11-slim-bookworm AS builder
+FROM python:3.14-slim-bookworm AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -19,7 +19,7 @@ COPY requirements.lock ./
 RUN pip install --no-cache-dir --require-hashes --prefix=/install -r requirements.lock
 
 
-FROM python:3.11-slim-bookworm AS runtime
+FROM python:3.14-slim-bookworm AS runtime
 
 LABEL org.opencontainers.image.title="Sistem Rekomendasi Menu MBG" \
       org.opencontainers.image.description="K-Means + AHP + Flask" \
