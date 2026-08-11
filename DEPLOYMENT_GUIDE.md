@@ -89,7 +89,7 @@ sana. Platform lain menyuntikkan `PORT` sendiri.
 | Variabel | Wajib | Nilai | Catatan |
 |---|---|---|---|
 | `MBG_SECRET_KEY` | **Ya** | 64 karakter heksadesimal acak | Aplikasi menolak start tanpa ini di produksi |
-| `MBG_TRUSTED_PROXIES` | Sangat dianjurkan | `1` di belakang satu proxy | Baca peringatan di bawah |
+| `MBG_TRUSTED_PROXIES` | Sangat dianjurkan | `3` pada Render | Baca peringatan di bawah |
 | `FLASK_ENV` | Tidak | `production` | Sudah menjadi bawaan pada image |
 | `WEB_CONCURRENCY` | Tidak | `1` | Baca alasannya di `gunicorn.conf.py` |
 | `MBG_RATE_LIMIT` | Tidak | `240` | Per alamat IP per menit, per worker |
@@ -113,6 +113,17 @@ penyerang.
 Setelah deploy, buka log dan kirim satu permintaan. Bila alamat yang tercatat
 adalah alamat internal platform dan bukan alamat Anda, angkanya masih terlalu
 rendah.
+
+Pada Render, pengujian di layanan yang berjalan memberi hasil berikut:
+
+| Nilai | Alamat yang tercatat |
+|---|---|
+| 1 | `10.27.139.2`, berganti tiap permintaan, router internal Render |
+| 2 | `172.70.208.31`, tetap, tepi Cloudflare |
+| 3 | alamat ISP pengunjung, tetap dan benar |
+
+Jadi rantainya tiga lapis. Angka ini bukan dari dokumentasi melainkan dari
+pengujian, dan perlu diperiksa ulang bila Render mengubah topologinya.
 
 ---
 
@@ -198,7 +209,7 @@ docker run --rm mbg:lokal id -u     # harus 10001
 
 Berkas `deploy/nginx.conf` dan `deploy/mbg.service` masih ada untuk jalur ini,
 tetapi bukan lagi jalur utama dan tidak ikut diuji CI. Bila dipakai, pastikan
-`MBG_TRUSTED_PROXIES=1` dan `MBG_SECRET_KEY` terisi di `EnvironmentFile`, dan
+`MBG_TRUSTED_PROXIES=1` untuk Nginx tunggal dan `MBG_SECRET_KEY` terisi di `EnvironmentFile`, dan
 jalankan lewat `gunicorn app:app` supaya `gunicorn.conf.py` ikut terbaca.
 
 ---

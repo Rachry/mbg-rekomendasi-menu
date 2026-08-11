@@ -32,7 +32,11 @@ accesslog = "-"
 errorlog = "-"
 loglevel = os.getenv("MBG_LOG_LEVEL", "info").lower()
 
-# Alamat IP pengunjung tidak dicatat; %(h)s sudah cukup untuk penelusuran.
+# %(h)s mencatat alamat pengunjung sebagaimana dibaca ProxyFix, jadi log akses
+# memang memuat alamat IP. Header X-Forwarded-For mentahnya tidak dicatat,
+# sebab isinya seluruh rantai proxy dan tidak menambah informasi apa pun untuk
+# penelusuran. Ganti %(h)s dengan tanda hubung bila alamat pengunjung tidak
+# boleh tercatat sama sekali.
 access_log_format = '%(h)s "%(r)s" %(s)s %(b)s %(M)sms "%(a)s"'
 
 # /dev/shm dipakai karena /tmp bisa tidak dapat ditulis pada container

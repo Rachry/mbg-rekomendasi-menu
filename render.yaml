@@ -29,15 +29,20 @@ services:
       - key: MBG_SECRET_KEY
         generateValue: true
 
-      # Render menaruh load balancer sendiri di depan layanan, jadi ada satu
-      # hop. Naikkan ke 2 bila nanti Cloudflare dipasang di depannya.
+      # Rantai proxy Render ada tiga lapis: Cloudflare, load balancer, lalu
+      # router internal. Angka ini diperoleh dari pengujian di layanan yang
+      # berjalan, bukan dari dokumentasi:
       #
-      # Verifikasi setelah deploy: buka log, kirim satu permintaan, lalu
-      # periksa apakah alamat yang tercatat memang alamat Anda dan bukan
-      # alamat internal Render. Kalau salah, pembatas laju tidak bekerja
-      # sebagaimana mestinya.
+      #   1 -> 10.27.139.2, berganti tiap permintaan, router internal
+      #   2 -> 172.70.208.31, tetap, tepi Cloudflare
+      #   3 -> alamat ISP pengunjung, tetap dan benar
+      #
+      # Periksa ulang dengan cara yang sama bila Render mengubah topologinya
+      # atau bila layanan dipindah ke region lain. Nilai yang terlalu tinggi
+      # membuat X-Forwarded-For dapat dipalsukan sehingga pembatas laju dapat
+      # dilewati, jadi jangan menaikkannya tanpa bukti dari log.
       - key: MBG_TRUSTED_PROXIES
-        value: "1"
+        value: "3"
 
       - key: FLASK_ENV
         value: production

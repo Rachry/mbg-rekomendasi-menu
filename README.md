@@ -80,7 +80,8 @@ Contoh lengkap di [`deploy/contoh.env`](deploy/contoh.env).
 `MBG_TRUSTED_PROXIES` menentukan berapa entri terakhir pada `X-Forwarded-For`
 yang dipercaya. Nilai yang terlalu tinggi membuat header itu dapat dipalsukan
 sehingga rate limiter dapat dilewati. Isi sesuai jumlah proxy yang benar-benar
-ada, dan verifikasi lewat log setelah deploy.
+ada, lalu verifikasi lewat log akses: alamat yang tercatat harus alamat
+pengunjung, bukan alamat internal platform. Pada Render nilainya 3.
 
 ## Struktur
 
