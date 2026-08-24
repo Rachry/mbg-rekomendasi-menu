@@ -466,19 +466,6 @@
   .chart-wrap-radar { max-width: 340px; }
 }
 
-/* Pernyataan netralitas */
-.netralitas {
-  background: var(--accent-soft);
-  border-left: 4px solid var(--accent);
-  border-radius: var(--radius-sm);
-  padding: var(--space-5) var(--space-6);
-  margin: var(--space-6) 0 var(--space-8);
-}
-.netralitas h2 { margin-top: 0; font-size: var(--text-xl); }
-.netralitas p:last-child { margin-bottom: 0; }
-.netralitas ul { margin: var(--space-2) 0 var(--space-4) var(--space-5); }
-.netralitas li { margin-bottom: var(--space-1); }
-
 /* Pemilih bahan dua kolom pada halaman rekomendasi */
 .bahan-kepala { display: grid; grid-template-columns: 2.6rem 3.6rem 1fr;
   gap: 0.5rem; font-size: 0.68rem; text-transform: uppercase;

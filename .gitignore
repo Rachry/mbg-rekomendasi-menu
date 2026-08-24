@@ -47,3 +47,13 @@ Thumbs.db
 # angka yang tampil di web terikat pada commit yang sama dengan angka di
 # naskah, dan supaya container tidak membutuhkan volume persisten. Ukurannya
 # jauh di bawah batas berkas GitHub sebesar 100 MB.
+
+# Materi sidang (PPT) — tidak untuk GitHub
+PPT_Sidang_Indra_Fata_Sonjaya.pptx
+assets_ppt/
+build_ppt.py
+ppt_indra_check.txt
+render_out/
+
+# Data internal Hermes
+.hermes/
