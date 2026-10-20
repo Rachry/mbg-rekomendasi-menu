@@ -17,7 +17,7 @@
 # Ditulis harfiah pada kedua FROM, bukan lewat ARG, sebab Dependabot hanya
 # mengenali digest yang tertulis langsung pada baris FROM.
 
-FROM python:3.11-slim-bookworm@sha256:d29f48a31a8b408ed19272ca1e7b10ebae13b240a27e862d3d4217c528e2e0c3 AS builder
+FROM python:3.15-slim-bookworm@sha256:2a41267d9de9d358f77a1de356e0f16ecba8d39827855be0ce9ef4792edce402 AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -31,7 +31,7 @@ COPY requirements.lock ./
 RUN pip install --no-cache-dir --require-hashes --prefix=/install -r requirements.lock
 
 
-FROM python:3.11-slim-bookworm@sha256:d29f48a31a8b408ed19272ca1e7b10ebae13b240a27e862d3d4217c528e2e0c3 AS runtime
+FROM python:3.15-slim-bookworm@sha256:2a41267d9de9d358f77a1de356e0f16ecba8d39827855be0ce9ef4792edce402 AS runtime
 
 LABEL org.opencontainers.image.title="Sistem Rekomendasi Menu MBG" \
       org.opencontainers.image.description="K-Means + AHP + Flask" \
